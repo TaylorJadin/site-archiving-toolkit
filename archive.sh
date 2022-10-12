@@ -9,7 +9,7 @@ if [[ ${url} == http* ]];
 		mkdir -p "$workdir/$domain/browsertrix-crawler/"
 		mkdir -p "$workdir/$domain/httrack/"
 		docker run -d -p 9037:9037 -v "$workdir/$domain/browsertrix-crawler/:/crawls/collections/" -it webrecorder/browsertrix-crawler crawl --url $url --generateWACZ --workers 8 --text
-		docker run -v $workdir/$domain/httrack/:/data taylorjadin/httrack bash -c "httrack --robots=0 $url"
+		docker run -it --rm -v $workdir/$domain/httrack/:/data taylorjadin/httrack bash -c "httrack --robots=0 $url"
     else
     	echo "URL must start with http:// or https://"
         echo "Ex: ./archive.sh https://reclaimed.tech"
