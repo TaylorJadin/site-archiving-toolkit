@@ -1,4 +1,2 @@
-FROM debian
-RUN mkdir /data
-WORKDIR /data
+FROM webrecorder/browsertrix-crawler
 RUN apt update && apt install httrack -y
