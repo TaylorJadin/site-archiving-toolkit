@@ -1,5 +1,5 @@
 #!/bin/bash
-workdir=/root/webroot
+workdir=./archive
 url=$1
 domain=`echo $url | cut -d '/' -f 3`
 
