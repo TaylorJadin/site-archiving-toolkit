@@ -2,9 +2,10 @@ version: "3"
 
 services:
   apache:
+    container_name: apache
     image: httpd
     ports:
         - '80:80'
     volumes:
-        - ./crawls:/usr/local/apache2/htdocs/ 
+        - ../crawls:/usr/local/apache2/htdocs/ 
     restart: always
