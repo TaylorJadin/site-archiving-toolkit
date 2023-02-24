@@ -1,8 +1,8 @@
 #!/bin/bash
 
-domain=$1
-now=$2
-url=$3
+url=$1
+domain=$2
+now=$3
 
 cd /crawls/httrack
 httrack --robots=0 --extra-log --verbose --path /crawls $url
