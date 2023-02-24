@@ -1,5 +1,8 @@
 #!/bin/bash
 
+domain=$1
+now=$2
+
 # Clean up httrack stuff we don't need
 cd /crawls/httrack
 rm -rf hts-cache
@@ -19,6 +22,7 @@ mv *.js replay/
 cp /replay-template.html index.html
 
 # Zip up both httrack and webrecorder for easy download
-cd /crawls
-zip httrack.zip -r httrack
-zip webrecorder.zip -r webrecorder
+cd /crawls/httrack
+zip ../$domain-$now-httrack.zip -r .
+cd /crawls/webrecorder
+zip ../$domain-$now-webrecorder.zip -r .
