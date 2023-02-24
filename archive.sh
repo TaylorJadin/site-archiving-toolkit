@@ -44,7 +44,7 @@ if [[ ${url} == http* ]];
 	# Clean up httrack mirror and browsertrix crawl mirrors
 	clear
 	echo "Crawls completed. Cleaning up..."
-	docker run --name archive-toolkit --rm -v $crawldir/:/crawls archive-toolkit /bin/bash /post-crawl.sh $domain $now
+	docker run --name archive-toolkit --rm -v $crawldir/:/crawls archive-toolkit /bin/bash /post-crawl.sh $domain $now $url
 
     else
     	echo "URL must start with http:// or https://"

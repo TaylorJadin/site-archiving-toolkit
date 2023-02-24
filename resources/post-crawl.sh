@@ -2,6 +2,7 @@
 
 domain=$1
 now=$2
+url=$3
 
 # Clean up httrack stuff we don't need
 cd /crawls/httrack
@@ -20,6 +21,7 @@ wget https://cdn.jsdelivr.net/npm/replaywebpage/ui.js https://cdn.jsdelivr.net/n
 mkdir -p replay
 mv *.js replay/
 cp /replay-template.html index.html
+sed -i -e "s|CRAWL_URL|$url|" index.html
 
 # Zip up both httrack and webrecorder for easy download
 cd /crawls/httrack
