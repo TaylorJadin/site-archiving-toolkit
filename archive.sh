@@ -20,7 +20,7 @@ if [[ ${url} == http* ]];
 	# start browsertrix
 	docker run --name webrecorder -d --rm -p 9037:9037 -v $crawldir/webrecorder/:/crawls -it archive-toolkit  /webrecorder.sh $url $domain $now
 	
-	# start httrack
+	# start httrack crawl
 	docker run --name httrack -d --rm -v $crawldir/httrack/:/crawls archive-toolkit /httrack.sh $url $domain $now
 
 	# attach to httrack if its running
