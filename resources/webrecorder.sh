@@ -4,11 +4,11 @@ url=$1
 domain=$2
 now=$3
 
-cd /crawls
+cd /crawls/webrecorder
 crawl --url $url --generateWACZ --workers 8 --text --collection archive
 
 # Clean up webrecorder stuff we don't need
-mv /crawls/collections/archive/archive.wacz archive.wacz
+mv /crawls/webrecorder/collections/archive/archive.wacz /crawls/webrecorder/archive.wacz
 rm -rf collections proxy-certs static templates
 
 # Set up webrecorder to publish

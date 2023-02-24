@@ -5,7 +5,7 @@ domain=$2
 now=$3
 
 cd /crawls/httrack
-httrack --robots=0 --extra-log --verbose --path /crawls $url
+httrack --robots=0 --extra-log --verbose --path /crawls/httrack $url
 
 # Clean up stuff we don't need
 rm -rf hts-cache
