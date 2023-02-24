@@ -16,4 +16,4 @@ find . -name "*.html" -exec sed -i -E -e 's/integrity="[^"]+"//g' -e 's/crossori
 
 # Zip up for easy downloadls
 cd /crawls/httrack
-zip ../$domain-$now-httrack.zip -r .
+zip ../httrack-$domain-$now.zip -r .

@@ -19,4 +19,4 @@ cp /replay-template.html index.html
 sed -i -e "s|CRAWL_URL|$url|" index.html
 
 # Zip up for easy download
-zip ../$domain-$now-webrecorder.zip -r .
+zip ../webrecorder-$domain-$now.zip -r .
