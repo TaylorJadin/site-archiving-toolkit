@@ -24,6 +24,7 @@ if [[ ${url} == http* ]];
 	is_running=$(docker ps -q -f name="httrack")
 	if [ -n "$is_running" ]; then
 		docker attach --sig-proxy=false httrack
+		clear
 		echo "HTTrack completed its crawl." 
 	fi
 
@@ -35,6 +36,8 @@ if [[ ${url} == http* ]];
 	fi
 
 	# Clean up httrack mirror and browsertrix crawl mirrors
+	clear
+	echo "Crawls completed. Cleaning up..."
 	docker run --name archive-toolkit --rm -v $workdir/$domain/:/crawls/ archive-toolkit /bin/bash /post-crawl.sh
 
     else
