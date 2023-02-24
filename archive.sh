@@ -5,12 +5,16 @@ domain=`echo $url | cut -d '/' -f 3`
 
 if [[ ${url} == http* ]];
 	then
+	echo "Getting ready..."
 	docker build -f resources/Dockerfile . -t archive-toolkit
 
 	# make working directories
     mkdir -p $workdir/$domain/httrack/
 	mkdir -p $workdir/$domain/webrecorder/
 	
+	clear
+	echo "Starting HTTrack and Browsertrix Crawler..."
+
 	# start browsertrix
 	docker run --name webrecorder -d --rm -p 9037:9037 \
 	-v $workdir/$domain/webrecorder/:/crawls/collections/archive/ -it archive-toolkit \
