@@ -24,7 +24,6 @@ if [[ ${url} == http* ]];
 	is_running=$(docker ps -q -f name="httrack")
 	if [ -n "$is_running" ]; then
 		docker attach --sig-proxy=false httrack
-		clear
 		echo "HTTrack completed its crawl." 
 	fi
 
@@ -32,7 +31,6 @@ if [[ ${url} == http* ]];
 	is_running=$(docker ps -q -f name="webrecorder")
 	if [ -n "$is_running" ]; then
 		echo "Browsertrix Crawler is still working, attaching to container."
-		sleep 3
 		docker attach --sig-proxy=false webrecorder
 	fi
 

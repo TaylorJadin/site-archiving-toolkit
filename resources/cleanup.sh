@@ -17,3 +17,8 @@ wget https://cdn.jsdelivr.net/npm/replaywebpage/ui.js https://cdn.jsdelivr.net/n
 mkdir -p replay
 mv *.js replay/
 cp /replay-template.html index.html
+
+# Zip up both httrack and webrecorder for easy download
+cd /crawls
+zip httrack.zip -r httrack
+zip webrecorder.zip -r webrecorder
