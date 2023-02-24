@@ -18,10 +18,10 @@ if [[ ${url} == http* ]];
 	echo "Starting Browsertrix Crawler and HTTrack..."
 
 	# start browsertrix
-	docker run --name webrecorder -d --rm -p 9037:9037 -v $crawldir/webrecorder/:/crawls -it archive-toolkit  /webrecorder.sh $url $domain $now
+	docker run --name webrecorder -d --rm -p 9037:9037 -v $crawldir/webrecorder/:/crawls -it archive-toolkit  /bin/bash /webrecorder.sh $url $domain $now
 	
 	# start httrack crawl
-	docker run --name httrack -d --rm -v $crawldir/httrack/:/crawls archive-toolkit /httrack.sh $url $domain $now
+	docker run --name httrack -d --rm -v $crawldir/httrack/:/crawls archive-toolkit /bin/bash /httrack.sh $url $domain $now
 
 	# attach to httrack if its running
 	is_running=`docker ps -q -f name="httrack"`
@@ -37,6 +37,7 @@ if [[ ${url} == http* ]];
 		echo "Browsertrix Crawler is still working, attaching to container."
 		docker attach --sig-proxy=false webrecorder
 	fi
+
     else
     	echo "URL must start with http:// or https://"
         echo "Ex: ./archive.sh https://reclaimed.tech"
