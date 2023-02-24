@@ -5,7 +5,7 @@ domain=`echo $url | cut -d '/' -f 3`
 
 if [[ ${url} == http* ]];
 	then
-	docker build -f resources/Dockerfile -t archive-toolkit
+	docker build -f resources/Dockerfile . -t archive-toolkit
 
 	# make working directories
     mkdir -p $workdir/$domain/httrack/
