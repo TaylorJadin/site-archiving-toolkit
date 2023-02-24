@@ -15,7 +15,7 @@ if [[ ${url} == http* ]];
 	crawl --url $url --generateWACZ --workers 8 --text --collection output
 	
 	# start httrack crawl
-	docker run -v $workdir/$domain/httrack/:/crawls/httrack archive-toolkit \
+	docker run -d -v $workdir/$domain/httrack/:/crawls/httrack archive-toolkit \
 	httrack --robots=0 --path /crawls/httrack $url
     
 	# strip crossorigin and integrity retrictions out of html
