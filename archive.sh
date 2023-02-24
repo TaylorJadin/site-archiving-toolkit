@@ -1,6 +1,9 @@
 #!/bin/bash
+
+for url in "$@"
+do
+
 workdir=`pwd`/crawls
-url=$1
 domain=`echo $url | cut -d '/' -f 3`
 now=`date +%Y-%m-%dT%H%M%S`
 crawldir="$workdir/$domain-$now"
@@ -43,3 +46,5 @@ if [[ ${url} == http* ]];
         echo "Ex: ./archive.sh https://reclaimed.tech"
         exit
 fi
+
+done
