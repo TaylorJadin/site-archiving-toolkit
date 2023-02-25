@@ -41,6 +41,8 @@ if [[ ${url} == http* ]];
 		docker attach --sig-proxy=false webrecorder
 	fi
 
+	echo "Crawl of $url complete!"
+
     else
     	echo "URL must start with http:// or https://"
         echo "Ex: ./archive.sh https://reclaimed.tech"

@@ -31,3 +31,5 @@ if ($is_running) {
     Write-Output "Browsertrix Crawler is still working, attaching to container."
     docker attach --sig-proxy=false webrecorder
     }
+
+Write-Output "Crawl of $url complete!"
