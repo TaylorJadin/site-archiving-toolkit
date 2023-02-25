@@ -18,3 +18,16 @@ docker run --name webrecorder -d --rm -p 9037:9037 -v $crawldir/:/crawls -it arc
 
 # start httrack crawl
 docker run --name httrack -d --rm -v $crawldir/:/crawls archive-toolkit /bin/bash /httrack.sh $url $domain $now
+
+$is_running=docker ps -q -f name="httrack"
+if ($is_running) {
+    docker attach --sig-proxy=false httrack
+    Clear-Host
+    Write-Output "HTTrack completed its crawl." 
+    }
+
+$is_running=docker ps -q -f name="webrecorder"
+if ($is_running) {
+    Write-Output "Browsertrix Crawler is still working, attaching to container."
+    docker attach --sig-proxy=false webrecorder
+    }
