@@ -1,7 +1,10 @@
 $url=$args[0]
-$workdir=$pwd\crawls
+$workdir=Join-Path -Path $pwd -ChildPath "crawls"
+$domain=([System.Uri]$url).Host -replace '^www\.'
+$now=Get-Date -UFormat '+%Y-%m-%dT%H%M%S'
+$crawldir=Join-Path -Path $workdir -ChildPath $domain-$now
 
+docker.exe build -f resources/Dockerfile . -t archive-toolkit
 
-[uri]$url_uri = $url
-$domain = $url.Authority -replace '^www\.'
-$domain
+mkdir $crawldir\httrack
+mkdir $crawldir\webrecorder
