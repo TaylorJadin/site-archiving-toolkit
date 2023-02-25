@@ -12,11 +12,11 @@ mv /crawls/webrecorder/collections/archive/archive.wacz /crawls/webrecorder/arch
 rm -rf collections proxy-certs static templates
 
 # Set up webrecorder to publish
-wget https://cdn.jsdelivr.net/npm/replaywebpage/ui.js https://cdn.jsdelivr.net/npm/replaywebpage/sw.js
+wget -q https://cdn.jsdelivr.net/npm/replaywebpage/ui.js https://cdn.jsdelivr.net/npm/replaywebpage/sw.js
 mkdir -p replay
 mv *.js replay/
 cp /replay-template.html index.html
 sed -i -e "s|CRAWL_URL|$url|" index.html
 
 # Zip up for easy download
-zip ../webrecorder-$domain-$now.zip -r .
+zip -q ../webrecorder-$domain-$now.zip -r .
