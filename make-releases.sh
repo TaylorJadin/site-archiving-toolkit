@@ -1,19 +1,23 @@
 #!/bin/bash
 
+# Prep
+$release_dir=releases/site-archiving-toolkit
+
 # Make Linux / macOS vesrion
-linux_macos_release=releases/linux-macos-site-archiving-toolkit
-mkdir -p $linux_macos_release
-cp -r resources $linux_macos_release
-cp *.sh $linux_macos_release
-rm $linux_macos_release/make-releases.sh
+mkdir -p $release_dir
+cp -r resources $release_dir
+cp *.sh $release_dir
+rm $release_dir/make-releases.sh
 cd releases
-zip -r linux_macos_release.zip linux-macos-site-archiving-toolkit
+zip -r LINUX-MACOS-site-archiving-toolkit.zip site-archiving-toolkit
+cd ..
+rm -rf $release_dir
 
 # Make Windows version
-cd ..
-windows_release=releases/windows-site-archiving-toolkit
-mkdir -p $windows_release
-cp -r resources $windows_release
-cp *.ps1 $windows_release
+mkdir -p $release_dir
+cp -r resources $release_dir
+cp *.ps1 $release_dir
 cd releases
-zip -r windows_release.zip windows-site-archiving-toolkit
+zip -r WINDOWS-site-archiving-toolkit.zip site-archiving-toolkit
+cd ..
+rm -rf $release_dir
