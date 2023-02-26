@@ -1,5 +1,7 @@
 #!/bin/bash
 
+if [ -z "$STY" ]; then exec screen -m -S site-archiving-toolkit /bin/bash "$0" "$@"; fi
+
 for url in "$@"
 do
 
