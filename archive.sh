@@ -2,13 +2,16 @@
 
 if [ -z "$STY" ]; then exec screen -m -S site-archiving-toolkit /bin/bash "$0" "$@"; fi
 
+trap '' INT
+
 for url in "$@"
 do
 
 workdir=`pwd`/crawls
 domain=`echo $url | cut -d '/' -f 3`
 now=`date +%Y-%m-%dT%H%M%S`
-crawldir="$workdir/$domain-$now"
+crawldir="$workdir/INCOMPLETE-$domain-$now"
+completedir="$workdir/$domain-$now"
 
 if [[ ${url} == http* ]];
 	then
@@ -43,6 +46,8 @@ if [[ ${url} == http* ]];
 		docker attach --sig-proxy=false webrecorder
 	fi
 
+	mv $crawldir $completedir
+    
 	echo "Crawl of $url complete!"
 
     else
@@ -52,3 +57,6 @@ if [[ ${url} == http* ]];
 fi
 
 done
+
+
+

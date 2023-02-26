@@ -5,7 +5,8 @@ domain=$2
 now=$3
 
 cd /crawls/webrecorder
-crawl --url $url --generateWACZ --workers 8 --text --collection archive
+crawl --url $url --generateWACZ --workers 8 --text --collection archive | tee ../webrecorder.log
+rm ../webrecorder.log
 
 # Clean up webrecorder stuff we don't need
 mv /crawls/webrecorder/collections/archive/archive.wacz /crawls/webrecorder/archive.wacz
@@ -20,3 +21,5 @@ sed -i -e "s|CRAWL_URL|$url|" index.html
 
 # Zip up for easy download
 zip -q ../webrecorder-$domain-$now.zip -r .
+
+
