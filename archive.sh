@@ -19,7 +19,7 @@ if [[ ${url} == http* ]];
 	docker build -f resources/Dockerfile . -t archive-toolkit
 
 	# make crawl directories
-    mkdir -p $crawldir/httrack/
+	mkdir -p $crawldir/httrack/
 	mkdir -p $crawldir/webrecorder/
 	
 	clear
