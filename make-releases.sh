@@ -10,6 +10,7 @@ cd releases
 zip -r linux-macos-site-archiving-toolkit.zip .
 
 # Make Windows version
+cd ..
 windows_release=releases/windows-site-archiving-toolkit
 mkdir -p $windows_release
 cp -r resources $windows_release
