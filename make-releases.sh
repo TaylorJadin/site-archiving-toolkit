@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Make Linux / macOS vesrion
-linux-macos-release=releases/linux-macos-site-archiving-toolkit
+linux-macos-release="releases/linux-macos-site-archiving-toolkit"
 mkdir -p $linux-macos-release
 cp -r resources/ $linux-macos-release
 cp *.sh $linux-macos-release
@@ -11,7 +11,7 @@ zip -r linux-macos-site-archiving-toolkit.zip .
 rm $linux-macos-release
 
 # Make Windows version
-windows-release=releases/windows-site-archiving-toolkit
+windows-release="releases/windows-site-archiving-toolkit"
 mkdir -p $windows-release
 cp -r resources/ $windows-release
 cp *.ps1 $windows-release
