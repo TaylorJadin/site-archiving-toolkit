@@ -2,7 +2,8 @@ $url=$args[0]
 $workdir=Join-Path -Path $pwd -ChildPath "crawls"
 $domain=([System.Uri]$url).Host -replace '^www\.'
 $now=Get-Date -UFormat '+%Y-%m-%dT%H%M%S'
-$crawldir=Join-Path -Path $workdir -ChildPath $domain-$now
+$crawldir=Join-Path -Path $workdir -ChildPath INCOMPLETE-$domain-$now
+$completedir=Join-Path -Path $workdir -ChildPath $domain-$now
 
 Write-Output "Getting ready..."
 docker.exe build -f resources/Dockerfile . -t archive-toolkit
@@ -31,5 +32,7 @@ if ($is_running) {
     Write-Output "Browsertrix Crawler is still working, attaching to container."
     docker attach --sig-proxy=false webrecorder
     }
+
+mv $crawldir $completedir
 
 Write-Output "Crawl of $url complete!"
