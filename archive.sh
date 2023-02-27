@@ -10,8 +10,8 @@ do
 workdir=`pwd`/crawls
 domain=`echo $url | cut -d '/' -f 3`
 now=`date +%Y-%m-%dT%H%M%S`
-crawldir="$workdir/INCOMPLETE-$domain-$now"
-completedir="$workdir/$domain-$now"
+crawldir="$workdir/INCOMPLETE-$now-$domain"
+completedir="$workdir/$now-$domain"
 
 if [[ ${url} == http* ]];
 	then
