@@ -1,9 +1,12 @@
 #!/bin/bash
 
+# Open up a screen session 
 if [ -z "$STY" ]; then exec screen -m -S site-archiving-toolkit /bin/bash "$0" "$@"; fi
 
+# Ignore ctrl+c
 trap '' INT
 
+# Archive every URL passed as an argument
 for url in "$@"
 do
 
