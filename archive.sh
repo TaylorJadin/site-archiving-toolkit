@@ -57,8 +57,3 @@ fi
 mv $crawldir $completedir
 
 echo "Crawl of $url complete!"
-
-done
-
-
-
