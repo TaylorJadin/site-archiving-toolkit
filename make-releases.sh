@@ -2,6 +2,7 @@
 
 # Prep
 release_dir=releases/site-archiving-toolkit
+rm -rf releases
 
 # Make Linux / macOS vesrion
 mkdir -p $release_dir
