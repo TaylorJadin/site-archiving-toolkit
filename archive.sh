@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [[ ${url} != http* ]];
+if [[ $1 != http* ]];
 then
 echo "URL must start with http:// or https://"
 echo "Ex: ./archive.sh https://reclaimed.tech"
@@ -57,3 +57,4 @@ fi
 mv $crawldir $completedir
 
 echo "Crawl of $url complete!"
+done
