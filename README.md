@@ -44,14 +44,14 @@ You can give the archive command a list of URLs seperated by spaces, and it will
 archive https://url.com https://anotherurl.com
 ```
 
-Once you start a crawl using the `archive` command you no longer need to keep your terminal open, as it will run in the background. If you need to stop crawling a site use `quit-crawlers` which will quit all httrack or browsertrix crawler jobs:
+Once you start a crawl using the `archive` command, you no longer need to keep your terminal open, as it will run in the background. If you need to stop crawling a site use `quit-crawlers` which will quit all httrack or browsertrix crawler jobs:
 ```
 quit-crawlers
 ``` 
 
 ### Previewing and Downloading your archived sites
 
-Visit the environment URL of your Site Archiving Toolkit environment to see all completed and in-progress crawls. When they are finished you can view them and download them as zip files. If you need to delete crawls that were made previously and no longer needed, you can find them in the `crawls` directory, located at `/root/site-archiving-toolkit/crawls`, which is also bookmarked in the Reclaim Cloud file manager.
+Visit the environment URL of your Site Archiving Toolkit environment to see all completed and in-progress crawls. When they are finished you can view them and download them as zip files. If you need to delete crawls that were made previously and are no longer needed, you can find them in the `crawls` directory, located at `/root/site-archiving-toolkit/crawls`, which is also bookmarked in the Reclaim Cloud file manager.
 
 ### Using the Site Archiving Toolkit on your own computer
 
