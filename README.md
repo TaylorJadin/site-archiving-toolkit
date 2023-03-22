@@ -69,18 +69,18 @@ Visit the environment URL of your Site Archiving Toolkit environment to see all 
 
 `./attach.sh` to re-attach to an in-progress crawl. This is useful if you started one earlier and closed your terminal, and now you want to check back up on the status.
 
-`./start-server.sh` to start a local web server so you can preview your achived sites. After running this command, open up a web browser and navigate to `http://localhost`
+`./start-server.sh` to start a local web server so you can preview your achived sites. After running this command, open up a web browser and navigate to <http://localhost>
 
 `./stop-server.sh` to stop the local web server
 
 #### Similar commands are available on Windows when using Powershell:
 
-`./archive.ps1` to archive sites. Note that the Windows version only supports one URL at a time.
+`.\archive.ps1` to archive sites. Note that the Windows version only supports one URL at a time.
 
-`./quit-crawlers.ps1` to quit any in-progress crawls
+`.\quit-crawlers.ps1` to quit any in-progress crawls
 
-`./attach.ps1` to re-attach to an in-progress crawl. This is useful if you started one earlier and closed your terminal, and now you want to check back up on the status.
+`.\attach.ps1` to re-attach to an in-progress crawl. This is useful if you started one earlier and closed your terminal, and now you want to check back up on the status.
 
-`./start-server.ps1` to start a local web server so you can preview your achived sites. After running this command, open up a web browser and navigate to `http://localhost`
+`.\start-server.ps1` to start a local web server so you can preview your achived sites. After running this command, open up a web browser and navigate to <http://localhost>
 
-`./stop-server.ps1` to stop the local web server
+`.\stop-server.ps1` to stop the local web server
