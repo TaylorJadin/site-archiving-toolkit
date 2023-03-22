@@ -4,7 +4,7 @@
 
 The Site Archiving Toolkit allows you to quickly and easily make both flattened HTML and web archive versions of websites. These scripts are a relatively easy to use command line interface for crawling sites using both [HTTrack](https://www.httrack.com) and [Browsertrix Crawler](https://github.com/webrecorder/browsertrix-crawler) (from the [Webrecorder](https://webrecorder.net) project) in Docker.
 
-Check out this stream archive to see what it does and how to use it:
+Check out this video to see what it does and how to use it:
 
 [Site Archiving Toolkit - reclaim.tv](https://archive.reclaim.tv/w/qYeNBzUdDWDxWi8pFSLNB1)
 
