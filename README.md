@@ -12,6 +12,10 @@ Check ou this example to see the types of archives it makes:
 
 [archiving.ca.reclaim.cloud](https://archiving.ca.reclaim.cloud/)
 
+These archives are zipped and easy to download, where they can be placed on just about any web server and made public! Here's an example of one in use:
+
+[digciz.jadin.me](https://digciz.jadin.me)
+
 ### Features
 
 - Crawl an entire site / domain for offline browsing, preservation, or whatever other purpose
