@@ -48,3 +48,36 @@ quit-crawlers
 ### Previewing and Downloading your archived sites
 
 Visit the environment URL of your Site Archiving Toolkit environment to see all completed and in-progress crawls. When they are finished you can view them and download them as zip files. If you need to delete crawls that were made previously and no longer needed, you can find them in the `crawls` directory, located at `/root/site-archiving-toolkit/crawls`, which is also bookmarked in the Reclaim Cloud file manager.
+
+### Using the Site Archiving Toolkit on your own computer
+
+More detail is coming soon here, but the gist is this:
+- Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- Downlaod the latest version from the [releases page](https://github.com/TaylorJadin/site-archiving-toolkit/releases) for your OS
+- Unzip the release and place it somewhere convenient (maybe your Home directory or Documents folder)
+- Open the Terminal on macOS, or Powershell on Windows
+- `cd` to the folder you unzipped the release into (ex: `cd ~/Documents/site-archiving-toolkit`)
+
+#### From here you can run any of the following commands on macOS or Linux:
+
+`./archive.sh` to archive sites
+
+`./quit-crawlers.sh` to quit any in-progress crawls
+
+`./attach.sh` to re-attach to an in-progress crawl. This is useful if you started one earlier and closed your terminal, and now you want to check back up on the status.
+
+`./start-server.sh` to start a local web server so you can preview your achived sites. After running this command, open up a web browser and navigate to `http://localhost`
+
+`./stop-server.sh` to stop the local web server
+
+#### Similar commands are available on Windows when using Powershell:
+
+`./archive.ps1` to archive sites. Note that the Windows version only supports one URL at a time.
+
+`./quit-crawlers.ps1` to quit any in-progress crawls
+
+`./attach.ps1` to re-attach to an in-progress crawl. This is useful if you started one earlier and closed your terminal, and now you want to check back up on the status.
+
+`./start-server.ps1` to start a local web server so you can preview your achived sites. After running this command, open up a web browser and navigate to `http://localhost`
+
+`./stop-server.ps1` to stop the local web server
