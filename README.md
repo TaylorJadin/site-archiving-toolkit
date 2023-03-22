@@ -57,7 +57,7 @@ Visit the environment URL of your Site Archiving Toolkit environment to see all 
 
 - Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 - Launch Docker Desktop
-- Downlaod the latest version from the [releases page](https://github.com/TaylorJadin/site-archiving-toolkit/releases) for your OS
+- Downlaod the latest version of the Site Archiving Toolkit from the [releases page](https://github.com/TaylorJadin/site-archiving-toolkit/releases) for your OS
 - Unzip the release and place it somewhere convenient (maybe your Home directory or Documents folder)
 - Open the Terminal on macOS, or Powershell on Windows
 - `cd` to the folder you unzipped the release into (ex: `cd ~/Documents/site-archiving-toolkit`)
