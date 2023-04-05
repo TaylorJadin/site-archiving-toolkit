@@ -6,7 +6,6 @@ now=$3
 
 cd /crawls/webrecorder
 crawl --url $url --generateWACZ --workers 8 --text --collection archive | tee ../webrecorder.log
-rm ../webrecorder.log
 
 # Clean up webrecorder stuff we don't need
 mv /crawls/webrecorder/collections/archive/archive.wacz /crawls/webrecorder/archive.wacz
