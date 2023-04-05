@@ -44,20 +44,20 @@ You can give the archive command a list of URLs seperated by spaces, and it will
 archive https://url.com https://anotherurl.com
 ```
 
-Once you start a crawl using the `archive` command you no longer need to keep your terminal open, as it will run in the background. If you need to stop crawling a site use `quit-crawlers` which will quit all httrack or browsertrix crawler jobs:
+Once you start a crawl using the `archive` command, you no longer need to keep your terminal open, as it will run in the background. If you need to stop crawling a site use `quit-crawlers` which will quit all httrack or browsertrix crawler jobs:
 ```
 quit-crawlers
 ``` 
 
 ### Previewing and Downloading your archived sites
 
-Visit the environment URL of your Site Archiving Toolkit environment to see all completed and in-progress crawls. When they are finished you can view them and download them as zip files. If you need to delete crawls that were made previously and no longer needed, you can find them in the `crawls` directory, located at `/root/site-archiving-toolkit/crawls`, which is also bookmarked in the Reclaim Cloud file manager.
+Visit the environment URL of your Site Archiving Toolkit environment to see all completed and in-progress crawls. When they are finished you can view them and download them as zip files. If you need to delete crawls that were made previously and are no longer needed, you can find them in the `crawls` directory, located at `/root/site-archiving-toolkit/crawls`, which is also bookmarked in the Reclaim Cloud file manager.
 
 ### Using the Site Archiving Toolkit on your own computer
 
 - Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 - Launch Docker Desktop
-- Downlaod the latest version of the Site Archiving Toolkit from the [releases page](https://github.com/TaylorJadin/site-archiving-toolkit/releases) for your OS
+- Download the latest version of the Site Archiving Toolkit for your OS from the [releases page](https://github.com/TaylorJadin/site-archiving-toolkit/releases)
 - Unzip the release and place it somewhere convenient (maybe your Home directory or Documents folder)
 - Open the Terminal on macOS, or Powershell on Windows
 - `cd` to the folder you unzipped the release into (ex: `cd ~/Documents/site-archiving-toolkit`)
@@ -68,7 +68,7 @@ Visit the environment URL of your Site Archiving Toolkit environment to see all 
 
 `./quit-crawlers.sh` to quit any in-progress crawls
 
-`./attach.sh` to re-attach to an in-progress crawl. This is useful if you started one earlier and closed your terminal, and now you want to check back up on the status.
+`./attach.sh` to re-attach to an in-progress crawl. This is useful if you started one earlier and closed your terminal, and now you want to check back up on their status.
 
 `./start-server.sh` to start a local web server so you can preview your achived sites. After running this command, open up a web browser and navigate to <http://localhost>
 
