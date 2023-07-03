@@ -1,8 +1,6 @@
 #!/bin/bash
 
 url=$1
-domain=$2
-now=$3
 
 cd /crawls
 crawl --url $url --generateWACZ --workers 4 --text --collection archive | tee ../webrecorder.log

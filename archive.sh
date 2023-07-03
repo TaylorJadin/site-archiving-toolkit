@@ -34,7 +34,7 @@ clear
 echo "Starting Browsertrix Crawler and HTTrack..."
 
 # start browsertrix
-docker run --name webrecorder -d --rm -p 9037:9037 -v $crawldir/:/crawls archive-toolkit  /bin/bash /webrecorder.sh $url $domain $now
+docker run --name webrecorder -d --rm -p 9037:9037 -v $crawldir/:/crawls archive-toolkit  /bin/bash /webrecorder.sh $url
 
 # attach to browsertrix if its still running
 is_running=`docker ps -q -f name="webrecorder"`
