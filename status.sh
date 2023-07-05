@@ -1,7 +1,12 @@
 #!/bin/bash
 
-dirs=`ls crawls/ | wc -l`
+# run this with:
+# screen -d -m watch -n 10 bash status.sh umw1.sh
+
+ls=`ls crawls/ | wc -l`
+dirs=$(( $ls - 1))
 lines_in_file=$(wc -l < "$1")
 total=$(( $lines_in_file - 3 ))
 
-echo "Progress: $dirs of $total"
+rm -f crawls/"_Progress "*
+echo "Progress: $dirs of $total" > crawls/"_Progress $dirs of $total"
