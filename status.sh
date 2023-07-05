@@ -1,7 +1,9 @@
 #!/bin/bash
 
-# run this with:
-# screen -d -m watch -n 10 bash status.sh umw1.sh
+# run like this ./status.sh umw1.sh
+
+# run in screen and watch every 10 seconds
+if [ -z "$STY" ]; then exec screen -m -S status watch -n 10 "$0" "$@"; fi
 
 ls=`ls crawls/ | wc -l`
 dirs=$(( $ls - 1))
