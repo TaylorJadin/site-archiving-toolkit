@@ -1,6 +1,6 @@
 #!/bin/bash
 
-rm -rf crawls/INCOMPLETE-hist451s14/
+rm -rf crawls/INCOMPLETE-*
 
 bash archive.sh \
 https://hist451s14.umwblogs.org/ \

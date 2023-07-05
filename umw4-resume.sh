@@ -1,6 +1,6 @@
 #!/bin/bash
 
-rm -rf crawls/INCOMPLETE-importfolio/
+rm -rf crawls/INCOMPLETE-*
 
 bash archive.sh \
 https://importfolio.umwblogs.org/ \

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-rm -rf crawls/INCOMPLETE-juliagoestobeijing/
+rm -rf crawls/INCOMPLETE-*
 
 bash archive.sh \
 https://juliagoestobeijing.umwblogs.org/ \

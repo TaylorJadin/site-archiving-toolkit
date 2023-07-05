@@ -1,9 +1,8 @@
 #!/bin/bash
 
-rm -rf crawls/INCOMPLETE-immigrants/
+rm -rf crawls/INCOMPLETE-*
 
 bash archive.sh \
-https://immigrants.umwblogs.org/ \
 https://afterearlyintervention.umwblogs.org/ \
 https://marymcbroom.umwblogs.org/ \
 https://poeticsequence.umwblogs.org/ \
