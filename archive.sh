@@ -31,7 +31,7 @@ docker build -f resources/Dockerfile . -t archive-toolkit
 mkdir -p $crawldir
 
 clear
-echo "Starting Browsertrix Crawler and HTTrack..."
+echo "Starting Browsertrix Crawler..."
 
 # start browsertrix
 docker run --name webrecorder -d --rm -p 9037:9037 -v $crawldir/:/crawls archive-toolkit  /bin/bash /webrecorder.sh $url
