@@ -1,4 +1,4 @@
 crawls/*
 .DS_Store
 releases/*
-_Progress*
+"**Progress** "*
