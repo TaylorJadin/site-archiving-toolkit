@@ -1,5 +1,7 @@
 #!/bin/bash
 
+rm -rf crawls/INCOMPLETE-*
+
 bash archive.sh \
 https://ethicsandlit.umwblogs.org/ \
 https://siteredesign.umwblogs.org/ \
