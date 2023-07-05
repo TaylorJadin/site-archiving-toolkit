@@ -3,7 +3,6 @@
 rm -rf crawls/INCOMPLETE-*
 
 bash archive.sh \
-https://juliagoestobeijing.umwblogs.org/ \
 https://caitlinbrady.umwblogs.org/ \
 https://madelinecain.umwblogs.org/ \
 https://evang.umwblogs.org/ \

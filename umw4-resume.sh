@@ -3,7 +3,6 @@
 rm -rf crawls/INCOMPLETE-*
 
 bash archive.sh \
-https://importfolio.umwblogs.org/ \
 https://mysight.umwblogs.org/ \
 https://dcrump.umwblogs.org/ \
 https://oligopolyecon202.umwblogs.org/ \
