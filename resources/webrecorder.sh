@@ -3,7 +3,7 @@
 url=$1
 
 cd /crawls
-crawl --url $url --generateWACZ --workers 8 --text --collection archive | tee webrecorder.log
+crawl --url $url --generateWACZ --workers 8 --text --scopeType host --collection archive | tee webrecorder.log
 
 # Clean up webrecorder stuff we don't need
 mv /crawls/collections/archive/archive.wacz /crawls/archive.wacz
