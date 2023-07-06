@@ -18,4 +18,5 @@ https://everettbartlett.umwblogs.org/ \
 https://twodollarchallenge.org/ \
 https://jdawsonedu.umwblogs.org/ \
 https://rjarchive.umwblogs.org/ \
+https://orivero2.umwblogs.org/ \
 https://umwblogs.org/

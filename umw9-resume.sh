@@ -3,41 +3,6 @@
 rm -rf crawls/INCOMPLETE-*
 
 bash archive.sh \
-https://pnguyen2.umwblogs.org/ \
-https://sammcmullen22.umwblogs.org/ \
-https://aschmied.umwblogs.org/ \
-https://tylerray.umwblogs.org/ \
-https://jschride.umwblogs.org/ \
-https://emaston.umwblogs.org/ \
-https://msarlo30618.umwblogs.org/ \
-https://pbogeropenlearning2018.umwblogs.org/ \
-https://ahblog.umwblogs.org/ \
-https://zacharyhandlin.umwblogs.org/ \
-https://gizmo.umwblogs.org/ \
-https://kaylyncordingley.umwblogs.org/ \
-https://teamtgal.umwblogs.org/ \
-https://noel94.umwblogs.org/ \
-https://digitalajax.umwblogs.org/ \
-https://lkong2.umwblogs.org/ \
-https://bbravo.umwblogs.org/ \
-https://elliemakesthings.umwblogs.org/ \
-https://lburke2.umwblogs.org/ \
-https://jleckrone425leadership.umwblogs.org/ \
-https://gchishol.umwblogs.org/ \
-https://ttorres.umwblogs.org/ \
-https://ericsblog.umwblogs.org/ \
-https://resourcedisabilityguide.umwblogs.org/ \
-https://campusafety.umwblogs.org/ \
-https://rdalessa.umwblogs.org/ \
-https://mpetroskey6.umwblogs.org/ \
-https://carinadavis.umwblogs.org/ \
-https://krytin.umwblogs.org/ \
-https://cpfrimmer.umwblogs.org/ \
-https://kindacts.umwblogs.org/ \
-https://bswindell.umwblogs.org/ \
-https://cocresearch.umwblogs.org/ \
-https://ebdeducationandresources.umwblogs.org/ \
-https://orivero2.umwblogs.org/ \
 https://japan.umwblogs.org/ \
 https://melhak.umwblogs.org/ \
 https://ekachele.umwblogs.org/ \
