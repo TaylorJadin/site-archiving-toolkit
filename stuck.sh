@@ -13,3 +13,4 @@ https://rjwash.umwblogs.org/ \
 https://introws.umwblogs.org/ \
 https://unravel.umwblogs.org/ \
 https://sophiacanbeartsytoo.umwblogs.org/ \
+https://tagsblog.umwblogs.org/ \
