@@ -15,3 +15,4 @@ https://unravel.umwblogs.org/ \
 https://sophiacanbeartsytoo.umwblogs.org/ \
 https://tagsblog.umwblogs.org/ \
 https://everettbartlett.umwblogs.org/ \
+https://twodollarchallenge.org/ \
