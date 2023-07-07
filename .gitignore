@@ -1,4 +1,5 @@
 crawls/*
+crawls-httrack
 .DS_Store
 releases/*
 "**Progress** "*

@@ -1,0 +1,21 @@
+#!/bin/bash
+httrack --robots=0 --extended-parsing=true --disable-security-limits --max-rate=0 --extra-log --verbose --path ./crawls-httrack/immigrants https://immigrants.umwblogs.org/
+httrack --robots=0 --extended-parsing=true --disable-security-limits --max-rate=0 --extra-log --verbose --path ./crawls-httrack/juliagoestobeijing https://juliagoestobeijing.umwblogs.org/
+httrack --robots=0 --extended-parsing=true --disable-security-limits --max-rate=0 --extra-log --verbose --path ./crawls-httrack/importfolio https://importfolio.umwblogs.org/
+httrack --robots=0 --extended-parsing=true --disable-security-limits --max-rate=0 --extra-log --verbose --path ./crawls-httrack/litjournalspring11 https://litjournalspring11.umwblogs.org/
+httrack --robots=0 --extended-parsing=true --disable-security-limits --max-rate=0 --extra-log --verbose --path ./crawls-httrack/hist451s14 https://hist451s14.umwblogs.org/
+httrack --robots=0 --extended-parsing=true --disable-security-limits --max-rate=0 --extra-log --verbose --path ./crawls-httrack/tags https://tags.umwblogs.org/
+httrack --robots=0 --extended-parsing=true --disable-security-limits --max-rate=0 --extra-log --verbose --path ./crawls-httrack/ashleygraceterrell https://ashleygraceterrell.umwblogs.org
+httrack --robots=0 --extended-parsing=true --disable-security-limits --max-rate=0 --extra-log --verbose --path ./crawls-httrack/hist383f12 https://hist383f12.umwblogs.org/
+httrack --robots=0 --extended-parsing=true --disable-security-limits --max-rate=0 --extra-log --verbose --path ./crawls-httrack/rjwash https://rjwash.umwblogs.org/
+httrack --robots=0 --extended-parsing=true --disable-security-limits --max-rate=0 --extra-log --verbose --path ./crawls-httrack/introws https://introws.umwblogs.org/
+httrack --robots=0 --extended-parsing=true --disable-security-limits --max-rate=0 --extra-log --verbose --path ./crawls-httrack/unravel https://unravel.umwblogs.org/
+httrack --robots=0 --extended-parsing=true --disable-security-limits --max-rate=0 --extra-log --verbose --path ./crawls-httrack/sophiacanbeartsytoo https://sophiacanbeartsytoo.umwblogs.org/
+httrack --robots=0 --extended-parsing=true --disable-security-limits --max-rate=0 --extra-log --verbose --path ./crawls-httrack/tagsblog https://tagsblog.umwblogs.org/
+httrack --robots=0 --extended-parsing=true --disable-security-limits --max-rate=0 --extra-log --verbose --path ./crawls-httrack/everettbartlett https://everettbartlett.umwblogs.org/
+httrack --robots=0 --extended-parsing=true --disable-security-limits --max-rate=0 --extra-log --verbose --path ./crawls-httrack/twodollarchallenge https://twodollarchallenge.org/
+httrack --robots=0 --extended-parsing=true --disable-security-limits --max-rate=0 --extra-log --verbose --path ./crawls-httrack/jdawsonedu https://jdawsonedu.umwblogs.org/
+httrack --robots=0 --extended-parsing=true --disable-security-limits --max-rate=0 --extra-log --verbose --path ./crawls-httrack/rjarchive https://rjarchive.umwblogs.org/
+httrack --robots=0 --extended-parsing=true --disable-security-limits --max-rate=0 --extra-log --verbose --path ./crawls-httrack/orivero2 https://orivero2.umwblogs.org/
+httrack --robots=0 --extended-parsing=true --disable-security-limits --max-rate=0 --extra-log --verbose --path ./crawls-httrack/tl11 https://tl11.umwblogs.org/
+httrack --robots=0 --extended-parsing=true --disable-security-limits --max-rate=0 --extra-log --verbose --path ./crawls-httrack/umwblogs https://umwblogs.org/
