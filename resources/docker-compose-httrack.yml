@@ -1,0 +1,11 @@
+version: "3"
+
+services:
+  apache:
+    container_name: apache
+    image: httpd
+    ports:
+        - '81:80'
+    volumes:
+        - ../crawls-httrack:/usr/local/apache2/htdocs/ 
+    restart: unless-stopped
