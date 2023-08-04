@@ -8,6 +8,7 @@ rm -rf releases
 mkdir -p $release_dir
 cp -r resources $release_dir
 cp *.sh $release_dir
+cp README.md $release_dir
 rm $release_dir/make-releases.sh
 cd releases
 zip -r Linux-macOS-site-archiving-toolkit.zip site-archiving-toolkit
@@ -18,6 +19,7 @@ rm -rf $release_dir
 mkdir -p $release_dir
 cp -r resources $release_dir
 cp *.ps1 $release_dir
+cp README.md $release_dir
 cd releases
 zip -r Windows-site-archiving-toolkit.zip site-archiving-toolkit
 cd ..
