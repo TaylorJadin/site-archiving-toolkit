@@ -24,22 +24,21 @@ crawldir="$workdir/INCOMPLETE-$now-$domain"
 completedir="$workdir/$now-$domain"
 
 echo "Getting ready..."
-docker build -f resources/Dockerfile . -t archive-toolkit
-
-# make crawl directories
-mkdir -p $crawldir/httrack/
-mkdir -p $crawldir/webrecorder/
+docker build -f resources/Dockerfile.webrecorder . -t site-archiving-toolkit-webrecorder
+docker build -f resources/Dockerfile.httrack . -t site-archiving-toolkit-httrack 
 
 clear
 echo "Starting Browsertrix Crawler and HTTrack..."
 
 # start browsertrix
-docker run --name webrecorder -d --rm -p 9037:9037 -v $crawldir/:/crawls archive-toolkit  /bin/bash /webrecorder.sh $url $domain $now
+mkdir -p $crawldir/webrecorder/
+docker run --name webrecorder -d --rm -v $crawldir/:/output site-archiving-toolkit-webrecorder /bin/bash /webrecorder.sh $url $domain $now
 
 # start httrack crawl
-docker run --name httrack -d --rm -v $crawldir/:/crawls archive-toolkit /bin/bash /httrack.sh $url $domain $now
+mkdir -p $crawldir/httrack/
+docker run --name httrack -d --rm -v $crawldir/:/output site-archiving-toolkit-httrack /bin/bash /httrack.sh $url $domain $now
 
-# attach to httrack if its running
+#  attach to httrack if its running
 is_running=`docker ps -q -f name="httrack"`
 if [ -n "$is_running" ]; then
 	docker attach --sig-proxy=false httrack

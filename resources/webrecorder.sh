@@ -4,14 +4,14 @@ url=$1
 domain=$2
 now=$3
 
-cd /crawls/webrecorder
-crawl --url $url --generateWACZ --workers 4 --text --collection archive | tee ../webrecorder.log
+crawl --url "$url" --generateWACZ --workers 4 --text --collection archive | tee /output/webrecorder.log
 
 # Clean up webrecorder stuff we don't need
-mv /crawls/webrecorder/collections/archive/archive.wacz /crawls/webrecorder/archive.wacz
+mv /crawls/collections/archive/archive.wacz /output/webrecorder/archive.wacz
 rm -rf collections proxy-certs static templates
 
 # Set up webrecorder to publish
+cd /output/webrecorder
 wget -q https://cdn.jsdelivr.net/npm/replaywebpage/ui.js https://cdn.jsdelivr.net/npm/replaywebpage/sw.js
 mkdir -p replay
 mv *.js replay/
@@ -20,5 +20,3 @@ sed -i -e "s|CRAWL_URL|$url|" index.html
 
 # Zip up for easy download
 zip -q ../webrecorder-$domain-$now.zip -r .
-
-
