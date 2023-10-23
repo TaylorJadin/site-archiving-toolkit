@@ -1,18 +1,20 @@
 #!/bin/bash
 
+# Check if URL is formatted correctly
 if [[ $1 != http* ]]; then
 	echo "URL must start with http:// or https://"
 	echo "Ex: ./archive.sh https://reclaimed.tech"
 	exit
 fi
 
+# Is docker running?
 docker_check=`docker version`
 if [[ $docker_check == *"ERROR: Cannot connect to the Docker daemon"* ]]; then
 	echo "It looks like the Docker daemon has not been started. Check to see if Docker is installed and running."
 	exit
 fi
 
-#  check if crawls are already running
+# Are crawls running already?
 is_running=`docker ps -q -f name="httrack"`
 if [ -n "$is_running" ]; then
 	echo "It looks like there is already a crawl running."
