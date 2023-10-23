@@ -1,9 +1,20 @@
 #!/bin/bash
 
-if [[ $1 != http* ]];
-then
+if [[ $1 != http* ]]; then
 echo "URL must start with http:// or https://"
 echo "Ex: ./archive.sh https://reclaimed.tech"
+exit
+fi
+
+docker_check=`docker version | grep "ERROR: Cannot connect to the Docker daemon"`
+if [ -n $docker_check ]; then
+echo "It looks like the Docker daemon has not been started. Check to see if Docker is installed and running."
+exit
+fi
+
+screen_check=`screen -list | grep "site-archiving-toolkit"`
+if [ -n $docker_check ]; then
+echo "It looks like there is already a crawl running. Either check on the status by running ./attach.sh or quit by running ./quit-crawlers.sh"
 exit
 fi
 
