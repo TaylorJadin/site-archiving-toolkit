@@ -3,12 +3,6 @@
 # kill screen session
 screen -S site-archiving-toolkit -X quit
 
-docker_check=`docker version | grep "ERROR: Cannot connect to the Docker daemon"`
-if [ -n $docker_check ]; then
-echo "It looks like the Docker daemon has not been started. Check to see if Docker is installed and running."
-exit
-fi
-
 # stop httrack if its running
 is_running=`docker ps -q -f name="httrack"`
 if [ -n "$is_running" ]; then

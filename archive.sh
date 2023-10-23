@@ -8,9 +8,10 @@ if [[ $1 != http* ]]; then
 fi
 
 # Is docker running?
-docker_check=`docker version`
-if [[ $docker_check == *"ERROR: Cannot connect to the Docker daemon"* ]]; then
-	echo "It looks like the Docker daemon has not been started. Check to see if Docker is installed and running."
+docker_check=`docker ps 2>&1`
+if [[ $docker_check == *'Cannot connect to the Docker daemon'* ]]; then
+	echo $docker_check
+	echo "It looks like Docker is not available. Check to see if Docker is installed and running."
 	exit
 fi
 
@@ -21,6 +22,7 @@ if [ -n "$is_running" ]; then
 	echo "Either check on the status by running ./attach.sh or quit by running ./quit-crawlers.sh"
 	exit
 fi
+
 is_running=`docker ps -q -f name="webrecorder"`
 if [ -n "$is_running" ]; then
 	echo "It looks like there is already a crawl running."
