@@ -44,7 +44,7 @@ You can give the archive command a list of URLs seperated by spaces, and it will
 archive https://url.com https://anotherurl.com
 ```
 
-Once you start a crawl using the `archive` command, you no longer need to keep your terminal open, as it will run in the background. If you need to stop crawling a site use `quit-crawlers` which will quit all httrack or browsertrix crawler jobs:
+Once you start a crawl using the `archive` command, you no longer need to keep your terminal open, as it will run in the background. If you need to stop crawling a site, open a new terminal and use `quit-crawlers` which will quit all httrack or browsertrix crawler jobs:
 ```
 quit-crawlers
 ``` 
