@@ -1,21 +1,29 @@
 #!/bin/bash
 
 if [[ $1 != http* ]]; then
-echo "URL must start with http:// or https://"
-echo "Ex: ./archive.sh https://reclaimed.tech"
-exit
+	echo "URL must start with http:// or https://"
+	echo "Ex: ./archive.sh https://reclaimed.tech"
+	exit
 fi
 
-docker_check=`docker version | grep "ERROR: Cannot connect to the Docker daemon"`
-if [ -n $docker_check ]; then
-echo "It looks like the Docker daemon has not been started. Check to see if Docker is installed and running."
-exit
+docker_check=`docker version`
+if [[ $docker_check == *"ERROR: Cannot connect to the Docker daemon"* ]]; then
+	echo "It looks like the Docker daemon has not been started. Check to see if Docker is installed and running."
+	exit
 fi
 
-screen_check=`screen -list | grep "site-archiving-toolkit"`
-if [ -n $docker_check ]; then
-echo "It looks like there is already a crawl running. Either check on the status by running ./attach.sh or quit by running ./quit-crawlers.sh"
-exit
+#  check if crawls are already running
+is_running=`docker ps -q -f name="httrack"`
+if [ -n "$is_running" ]; then
+	echo "It looks like there is already a crawl running."
+	echo "Either check on the status by running ./attach.sh or quit by running ./quit-crawlers.sh"
+	exit
+fi
+is_running=`docker ps -q -f name="webrecorder"`
+if [ -n "$is_running" ]; then
+	echo "It looks like there is already a crawl running."
+	echo "Either check on the status by running ./attach.sh or quit by running ./quit-crawlers.sh"
+	exit
 fi
 
 # Open up a screen session 
