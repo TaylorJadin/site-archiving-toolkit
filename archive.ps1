@@ -1,3 +1,14 @@
+# Make archive.ini if it doesn't exist
+if (!(Test-Path -Path archive.ini)) {
+    Copy-Item -Path resources/defaults.ini -Destination archive.ini
+}
+
+# Read in archive.ini and set each line as a variable
+Get-Content archive.ini | ForEach-Object {
+    $key, $value = $_ -split '=', 2
+    Set-Variable -Name $key -Value $value
+}
+
 # check if crawls are already running and exit if they are
 $is_running=docker ps -q -f name="httrack"
 if ($is_running) {
@@ -21,33 +32,29 @@ $now=Get-Date -UFormat '+%Y-%m-%dT%H%M%S'
 $crawldir=Join-Path -Path $workdir -ChildPath $now-$domain
 
 # build containers
-Write-Output "Getting ready..."
 docker.exe build -f resources/Dockerfile.webrecorder . -t site-archiving-toolkit-webrecorder
 docker.exe build -f resources/Dockerfile.httrack . -t site-archiving-toolkit-httrack
 
-# make directories
-mkdir $crawldir\httrack
-mkdir $crawldir\webrecorder
+# do browsertrix crawl
+if ($enable_browsertrix -eq "TRUE") {
+    mkdir $crawldir\webrecorder
+    docker run --name webrecorder -d --rm -p 9037:9037 -v $crawldir/:/output -it site-archiving-toolkit-webrecorder  /bin/bash /webrecorder.sh $url $domain $now
+}
 
-Clear-Host
-
-# start browsertrix
-docker run --name webrecorder -d --rm -p 9037:9037 -v $crawldir/:/output -it site-archiving-toolkit-webrecorder  /bin/bash /webrecorder.sh $url $domain $now
-
-# start httrack crawl
-docker run --name httrack -d --rm -v $crawldir/:/output site-archiving-toolkit-httrack /bin/bash /httrack.sh $url $domain $now
+# do httrack crawl
+if ($enable_httrack -eq "TRUE") {
+    mkdir $crawldir\httrack
+    docker run --name httrack -d --rm -v $crawldir/:/output site-archiving-toolkit-httrack /bin/bash /httrack.sh $url $domain $now
+}
 
 # attach to crawls as they run
 $is_running=docker ps -q -f name="httrack"
 if ($is_running) {
     docker attach --sig-proxy=false httrack
-    Clear-Host
-    Write-Output "HTTrack completed its crawl." 
     }
 
 $is_running=docker ps -q -f name="webrecorder"
 if ($is_running) {
-    Write-Output "Browsertrix Crawler is still working, attaching to container."
     docker attach --sig-proxy=false webrecorder
     }
 
