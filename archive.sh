@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Make archive.ini if it doesn't exist
+if [ ! -f archive.ini ]; then
+	cp resources/defaults.ini archive.ini
+fi
+
+source archive.ini
+
 # Check if URL is formatted correctly
 if [[ $1 != http* ]]; then
 	echo "URL must start with http:// or https://"
@@ -46,33 +53,29 @@ now=`date +%Y-%m-%dT%H%M%S`
 crawldir="$workdir/INCOMPLETE-$now-$domain"
 completedir="$workdir/$now-$domain"
 
-echo "Getting ready..."
 docker build -f resources/Dockerfile.webrecorder . -t site-archiving-toolkit-webrecorder
 docker build -f resources/Dockerfile.httrack . -t site-archiving-toolkit-httrack 
 
-clear
-echo "Starting Browsertrix Crawler and HTTrack..."
-
-# start browsertrix
+# Start crawling!
+if [ "$enable_browsertrix" = TRUE ]; then
 mkdir -p $crawldir/webrecorder/
 docker run --name webrecorder -d --rm -v $crawldir/:/output site-archiving-toolkit-webrecorder /bin/bash /webrecorder.sh $url $domain $now
+fi
 
-# start httrack crawl
+if [ "$enable_httrack" = TRUE ]; then
 mkdir -p $crawldir/httrack/
 docker run --name httrack -d --rm -v $crawldir/:/output site-archiving-toolkit-httrack /bin/bash /httrack.sh $url $domain $now
+fi
 
 #  attach to httrack if its running
 is_running=`docker ps -q -f name="httrack"`
 if [ -n "$is_running" ]; then
 	docker attach --sig-proxy=false httrack
-	clear
-	echo "HTTrack completed its crawl." 
 fi
 
 # attach to browsertrix if its still running
 is_running=`docker ps -q -f name="webrecorder"`
 if [ -n "$is_running" ]; then
-	echo "Browsertrix Crawler is still working, attaching to container."
 	docker attach --sig-proxy=false webrecorder
 fi
 

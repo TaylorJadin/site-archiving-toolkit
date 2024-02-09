@@ -1,3 +1,4 @@
 FROM debian:latest
 RUN apt update && apt install httrack zip -y
 COPY resources/httrack.sh /httrack.sh
+COPY archive.ini /archive.ini

@@ -4,7 +4,9 @@ url=$1
 domain=$2
 now=$3
 
-crawl --url "$url" --generateWACZ --workers 4 --text --collection archive | tee /output/webrecorder.log
+source /archive.ini
+
+crawl --url "$url" --generateWACZ $browsertrix_parameters --collection archive | tee /output/webrecorder.log
 
 # Clean up webrecorder stuff we don't need
 mv /crawls/collections/archive/archive.wacz /output/webrecorder/$domain-$now.wacz

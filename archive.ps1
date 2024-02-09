@@ -30,7 +30,6 @@ mkdir $crawldir\httrack
 mkdir $crawldir\webrecorder
 
 Clear-Host
-Write-Output "Starting Browsertrix Crawler and HTTrack..."
 
 # start browsertrix
 docker run --name webrecorder -d --rm -p 9037:9037 -v $crawldir/:/output -it site-archiving-toolkit-webrecorder  /bin/bash /webrecorder.sh $url $domain $now
