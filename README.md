@@ -20,7 +20,7 @@ These archives are zipped and easy to download, where they can be placed on just
 
 - Crawl an entire site / domain for offline browsing, preservation, or whatever other purpose
 - Crawls can run in the background after they’ve been started, even if you close your terminal
-- Accepts multiple URLs at once, to queue up multiple crawl jobs (on Linux or macOS, this is not supported on the Windows version)
+- Accepts multiple URLs at once, to queue up multiple crawl jobs on Reclaim Cloud, Linux, or macOS (this is not supported on the Windows version)
 - Preview archived pages using a local web server
 - Automatically creates zip files for easy download/upload
 
