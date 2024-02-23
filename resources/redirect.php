@@ -1,7 +1,5 @@
 <?php
-$domain = $_SERVER['HTTP_HOST'];
-$directory = $_SERVER['REQUEST_URI'];
-$redirectUrl = 'https://' . $domain . '/#url=https://' . $domain . $directory;
+$redirectUrl = 'https://' . $_SERVER['HTTP_HOST'] . '/#url=' . 'CRAWL_URL' . $_SERVER['REQUEST_URI'];
 header('Location: ' . $redirectUrl, true, 301);
 exit;
 ?>

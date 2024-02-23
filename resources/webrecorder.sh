@@ -21,9 +21,10 @@ cp /index.html index.html
 if [ "$browsertrix_redirect_template" = TRUE ]; then
 cp /redirect.php redirect.php
 cp /.htaccess .htaccess
+sed -i -e "s|CRAWL_URL|$url|" redirect.php
 fi
 sed -i -e "s|CRAWL_URL|$url|" index.html
-sed -i -e "s|DOMAIN_NAME|$domain-$now|" index.html
+sed -i -e "s|FILE_NAME|$domain-$now|" index.html
 
 # Zip up for easy download
 zip -q ../webrecorder-$domain-$now.zip -r .
