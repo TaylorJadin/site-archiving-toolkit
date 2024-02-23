@@ -1,0 +1,6 @@
+# Force HTTPS
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [R,L]
+# Use PHP redirect file for all URLs that can't be found
+ErrorDocument 404 /redirect.php

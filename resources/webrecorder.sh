@@ -17,7 +17,9 @@ cd /output/webrecorder
 wget -q https://cdn.jsdelivr.net/npm/replaywebpage/ui.js https://cdn.jsdelivr.net/npm/replaywebpage/sw.js
 mkdir -p replay
 mv *.js replay/
-cp /replay-template.html index.html
+cp /index.html index.html
+cp /redirect.php redirect.php
+cp /.htaccess .htaccess
 sed -i -e "s|CRAWL_URL|$url|" index.html
 sed -i -e "s|DOMAIN_NAME|$domain-$now|" index.html
 
