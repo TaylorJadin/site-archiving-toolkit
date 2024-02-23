@@ -18,8 +18,10 @@ wget -q https://cdn.jsdelivr.net/npm/replaywebpage/ui.js https://cdn.jsdelivr.ne
 mkdir -p replay
 mv *.js replay/
 cp /index.html index.html
+if [ "$browsertrix_redirect_template" = TRUE ]; then
 cp /redirect.php redirect.php
 cp /.htaccess .htaccess
+fi
 sed -i -e "s|CRAWL_URL|$url|" index.html
 sed -i -e "s|DOMAIN_NAME|$domain-$now|" index.html
 
