@@ -6,13 +6,6 @@ now=$3
 
 source /archive.ini
 
-# Read in defaults.ini if archive.ini doesn't exist
-if [ ! -f archive.ini ]; then
-	source defaults.ini
-else
-	source archive.ini
-fi
-
 cd /output/httrack
 httrack $httrack_parameters --path /output/httrack "$url" | tee /output/httrack.log
 
