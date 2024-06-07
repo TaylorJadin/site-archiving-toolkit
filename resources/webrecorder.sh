@@ -26,5 +26,9 @@ fi
 sed -i -e "s|CRAWL_URL|$url|" index.html
 sed -i -e "s|FILE_NAME|$domain-$now|" index.html
 
+# Make sure permissions are correct
+find . -type d -exec chmod 755 {} \;
+find . -type f -exec chmod 644 {} \;
+
 # Zip up for easy download
 zip -q ../webrecorder-$domain-$now.zip -r .

@@ -16,5 +16,9 @@ rm *.gif
 # Get rid of integrity and crossorigin stuff
 find . -name "*.html" -exec sed -i -E -e 's/integrity="[^"]+"//g' -e 's/crossorigin="[^"]+"//g' {} \;
 
+# Make sure permissions are correct
+find . -type d -exec chmod 755 {} \;
+find . -type f -exec chmod 644 {} \;
+
 # Zip up for easy download
 zip -q ../httrack-$domain-$now.zip -r .
