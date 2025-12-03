@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # kill screen session
 screen -S site-archiving-toolkit -X quit
