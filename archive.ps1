@@ -46,6 +46,18 @@ function Normalize-Url {
 $url=$args[0]
 $workdir=Join-Path -Path $pwd -ChildPath "crawls"
 $normalized_url=Normalize-Url $url
+
+# Check if crawl already exists for this normalized URL
+if ($skip_existing_crawls -eq "TRUE") {
+    if (Test-Path -Path $workdir) {
+        $existing_crawl = Get-ChildItem -Path $workdir -Directory | Where-Object { $_.Name -like "*-$normalized_url" } | Select-Object -First 1
+        if ($existing_crawl) {
+            Write-Output "Skipping crawl for $url - existing crawl found: $($existing_crawl.Name)"
+            exit
+        }
+    }
+}
+
 $now=Get-Date -UFormat '+%Y-%m-%dT%H%M%S'
 $crawldir=Join-Path -Path $workdir -ChildPath "$now-$normalized_url"
 

@@ -67,6 +67,18 @@ do
 
 workdir=`pwd`/crawls
 normalized_url=$(normalize_url "$url")
+
+# Check if crawl already exists for this normalized URL
+if [ "$skip_existing_crawls" = TRUE ]; then
+	if [ -d "$workdir" ]; then
+		existing_crawl=$(find "$workdir" -maxdepth 1 -type d -name "*-$normalized_url" | head -n 1)
+		if [ -n "$existing_crawl" ]; then
+			echo "Skipping crawl for $url - existing crawl found: $(basename "$existing_crawl")"
+			continue
+		fi
+	fi
+fi
+
 now=`date +%Y-%m-%dT%H%M%S`
 crawldir="$workdir/INCOMPLETE-$now-$normalized_url"
 completedir="$workdir/$now-$normalized_url"
