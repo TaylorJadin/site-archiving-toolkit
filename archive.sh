@@ -38,7 +38,7 @@ if [ -n "$is_running" ]; then
 fi
 
 # Open up a screen session 
-if [ -z "$STY" ]; then exec screen -m -S site-archiving-toolkit /bin/bash "$0" "$@"; fi
+if [ -z "$STY" ]; then exec screen -m -S site-archiving-toolkit bash "$0" "$@"; fi
 
 # Ignore ctrl+c
 trap '' INT
@@ -98,12 +98,12 @@ docker build -f resources/Dockerfile.httrack . -t site-archiving-toolkit-httrack
 # Start crawling!
 if [ "$enable_browsertrix" = TRUE ]; then
 mkdir -p $crawldir/webrecorder/
-docker run --name webrecorder -d --rm -v $crawldir/:/output site-archiving-toolkit-webrecorder /bin/bash /webrecorder.sh $url $normalized_url $now
+docker run --name webrecorder -d --rm -v $crawldir/:/output site-archiving-toolkit-webrecorder bash /webrecorder.sh $url $normalized_url $now
 fi
 
 if [ "$enable_httrack" = TRUE ]; then
 mkdir -p $crawldir/httrack/
-docker run --name httrack -d --rm -v $crawldir/:/output site-archiving-toolkit-httrack /bin/bash /httrack.sh $url $normalized_url $now
+docker run --name httrack -d --rm -v $crawldir/:/output site-archiving-toolkit-httrack bash /httrack.sh $url $normalized_url $now
 fi
 
 #  attach to httrack if its running

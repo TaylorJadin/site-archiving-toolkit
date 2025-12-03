@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 url=$1
 normalized_url=$2
