@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Prep
 release_dir=releases/site-archiving-toolkit

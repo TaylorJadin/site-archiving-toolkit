@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Make archive.ini if it doesn't exist
 if [ ! -f archive.ini ]; then
