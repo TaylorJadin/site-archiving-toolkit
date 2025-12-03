@@ -46,6 +46,28 @@ function Normalize-Url {
 $url=$args[0]
 $workdir=Join-Path -Path $pwd -ChildPath "crawls"
 $normalized_url=Normalize-Url $url
+
+# Check if crawl already exists for this normalized URL
+if ($skip_existing_crawls -eq "TRUE") {
+    if (Test-Path -Path $workdir) {
+        # Remove any INCOMPLETE crawls for this URL
+        $incomplete_crawls = Get-ChildItem -Path $workdir -Directory | Where-Object { $_.Name -like "INCOMPLETE-*-$normalized_url" }
+        if ($incomplete_crawls) {
+            Write-Output "Removing incomplete crawl(s) for $url:"
+            foreach ($incomplete_dir in $incomplete_crawls) {
+                Write-Output "  Removing $($incomplete_dir.Name)"
+                Remove-Item -Path $incomplete_dir.FullName -Recurse -Force
+            }
+        }
+        # Check for completed crawls (not starting with INCOMPLETE-)
+        $completed_crawl = Get-ChildItem -Path $workdir -Directory | Where-Object { $_.Name -like "*-$normalized_url" -and $_.Name -notlike "INCOMPLETE-*" } | Select-Object -First 1
+        if ($completed_crawl) {
+            Write-Output "Skipping crawl for $url - completed crawl found: $($completed_crawl.Name)"
+            exit
+        }
+    }
+}
+
 $now=Get-Date -UFormat '+%Y-%m-%dT%H%M%S'
 $crawldir=Join-Path -Path $workdir -ChildPath "$now-$normalized_url"
 

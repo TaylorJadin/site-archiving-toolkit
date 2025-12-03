@@ -21,4 +21,6 @@ find . -type d -exec chmod 755 {} \;
 find . -type f -exec chmod 644 {} \;
 
 # Zip up for easy download
-zip -q ../httrack-$normalized_url-$now.zip -r .
+if [ "$create_httrack_zip" = TRUE ]; then
+	zip -q ../httrack-$normalized_url-$now.zip -r .
+fi

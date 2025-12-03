@@ -31,4 +31,6 @@ find . -type d -exec chmod 755 {} \;
 find . -type f -exec chmod 644 {} \;
 
 # Zip up for easy download
-zip -q ../webrecorder-$normalized_url-$now.zip -r .
+if [ "$create_webrecorder_zip" = TRUE ]; then
+	zip -q ../webrecorder-$normalized_url-$now.zip -r .
+fi

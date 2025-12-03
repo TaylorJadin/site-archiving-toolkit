@@ -67,6 +67,27 @@ do
 
 workdir=`pwd`/crawls
 normalized_url=$(normalize_url "$url")
+
+# Check if crawl already exists for this normalized URL
+if [ "$skip_existing_crawls" = TRUE ]; then
+	if [ -d "$workdir" ]; then
+		# Remove any INCOMPLETE crawls for this URL
+		find "$workdir" -maxdepth 1 -type d -name "*-$normalized_url" | while read -r crawl_dir; do
+			dirname=$(basename "$crawl_dir")
+			if [[ "$dirname" == INCOMPLETE-* ]]; then
+				echo "Removing incomplete crawl: $dirname"
+				rm -rf "$crawl_dir"
+			fi
+		done
+		# Check for completed crawls (not starting with INCOMPLETE-)
+		completed_crawl=$(find "$workdir" -maxdepth 1 -type d -name "*-$normalized_url" ! -name "INCOMPLETE-*" | head -n 1)
+		if [ -n "$completed_crawl" ]; then
+			echo "Skipping crawl for $url - completed crawl found: $(basename "$completed_crawl")"
+			continue
+		fi
+	fi
+fi
+
 now=`date +%Y-%m-%dT%H%M%S`
 crawldir="$workdir/INCOMPLETE-$now-$normalized_url"
 completedir="$workdir/$now-$normalized_url"
