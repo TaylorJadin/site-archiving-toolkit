@@ -66,6 +66,10 @@ for url in "$@"
 do
 
 workdir=`pwd`/crawls
+# Create crawls directory if it doesn't exist
+mkdir -p "$workdir"
+chmod 777 "$workdir"
+
 normalized_url=$(normalize_url "$url")
 
 # Check if crawl already exists for this normalized URL
