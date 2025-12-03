@@ -1,7 +1,7 @@
 #!/bin/bash
 
 url=$1
-domain=$2
+normalized_url=$2
 now=$3
 
 source /archive.ini
@@ -9,7 +9,7 @@ source /archive.ini
 crawl --url "$url" --generateWACZ $browsertrix_parameters --collection archive | tee /output/webrecorder.log
 
 # Clean up webrecorder stuff we don't need
-mv /crawls/collections/archive/archive.wacz /output/webrecorder/$domain-$now.wacz
+mv /crawls/collections/archive/archive.wacz /output/webrecorder/$normalized_url-$now.wacz
 rm -rf collections proxy-certs static templates
 
 # Set up webrecorder to publish
@@ -24,11 +24,11 @@ cp /.htaccess .htaccess
 sed -i -e "s|CRAWL_URL|$url|" redirect.php
 fi
 sed -i -e "s|CRAWL_URL|$url|" index.html
-sed -i -e "s|FILE_NAME|$domain-$now|" index.html
+sed -i -e "s|FILE_NAME|$normalized_url-$now|" index.html
 
 # Make sure permissions are correct
 find . -type d -exec chmod 755 {} \;
 find . -type f -exec chmod 644 {} \;
 
 # Zip up for easy download
-zip -q ../webrecorder-$domain-$now.zip -r .
+zip -q ../webrecorder-$normalized_url-$now.zip -r .

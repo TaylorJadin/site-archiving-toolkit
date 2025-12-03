@@ -1,7 +1,7 @@
 #!/bin/bash
 
 url=$1
-domain=$2
+normalized_url=$2
 now=$3
 
 source /archive.ini
@@ -21,4 +21,4 @@ find . -type d -exec chmod 755 {} \;
 find . -type f -exec chmod 644 {} \;
 
 # Zip up for easy download
-zip -q ../httrack-$domain-$now.zip -r .
+zip -q ../httrack-$normalized_url-$now.zip -r .

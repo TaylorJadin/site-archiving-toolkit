@@ -43,15 +43,33 @@ if [ -z "$STY" ]; then exec screen -m -S site-archiving-toolkit /bin/bash "$0" "
 # Ignore ctrl+c
 trap '' INT
 
+# Function to normalize URL for filesystem use
+normalize_url() {
+	local url="$1"
+	# Remove http:// or https://
+	url="${url#http://}"
+	url="${url#https://}"
+	# Remove trailing slash
+	url="${url%/}"
+	# Replace unsafe characters with dash
+	# Unsafe chars: < > : " / \ | ? * and spaces
+	url=$(echo "$url" | tr '<>:"/\\|?* ' '-')
+	# Remove any control characters
+	url=$(echo "$url" | tr -d '\000-\037')
+	# Remove any leading/trailing dashes and collapse multiple dashes
+	url=$(echo "$url" | sed 's/-\+/-/g' | sed 's/^-\|-$//g')
+	echo "$url"
+}
+
 # Archive every URL passed as an argument
 for url in "$@"
 do
 
 workdir=`pwd`/crawls
-domain=`echo $url | cut -d '/' -f 3`
+normalized_url=$(normalize_url "$url")
 now=`date +%Y-%m-%dT%H%M%S`
-crawldir="$workdir/INCOMPLETE-$now-$domain"
-completedir="$workdir/$now-$domain"
+crawldir="$workdir/INCOMPLETE-$now-$normalized_url"
+completedir="$workdir/$now-$normalized_url"
 
 docker build -f resources/Dockerfile.webrecorder . -t site-archiving-toolkit-webrecorder
 docker build -f resources/Dockerfile.httrack . -t site-archiving-toolkit-httrack 
@@ -59,12 +77,12 @@ docker build -f resources/Dockerfile.httrack . -t site-archiving-toolkit-httrack
 # Start crawling!
 if [ "$enable_browsertrix" = TRUE ]; then
 mkdir -p $crawldir/webrecorder/
-docker run --name webrecorder -d --rm -v $crawldir/:/output site-archiving-toolkit-webrecorder /bin/bash /webrecorder.sh $url $domain $now
+docker run --name webrecorder -d --rm -v $crawldir/:/output site-archiving-toolkit-webrecorder /bin/bash /webrecorder.sh $url $normalized_url $now
 fi
 
 if [ "$enable_httrack" = TRUE ]; then
 mkdir -p $crawldir/httrack/
-docker run --name httrack -d --rm -v $crawldir/:/output site-archiving-toolkit-httrack /bin/bash /httrack.sh $url $domain $now
+docker run --name httrack -d --rm -v $crawldir/:/output site-archiving-toolkit-httrack /bin/bash /httrack.sh $url $normalized_url $now
 fi
 
 #  attach to httrack if its running

@@ -24,12 +24,30 @@ if ($is_running) {
     exit
     }
 
+# Function to normalize URL for filesystem use
+function Normalize-Url {
+    param([string]$url)
+    # Remove http:// or https://
+    $url = $url -replace '^https?://', ''
+    # Remove trailing slash
+    $url = $url -replace '/$', ''
+    # Replace unsafe characters with dash
+    # Unsafe chars: < > : " / \ | ? * and spaces
+    $url = $url -replace '[<>:"/\\|?* ]', '-'
+    # Remove any control characters
+    $url = $url -replace '[\x00-\x1F]', ''
+    # Remove any leading/trailing dashes and collapse multiple dashes
+    $url = $url -replace '-+', '-'
+    $url = $url -replace '^-|-$', ''
+    return $url
+}
+
 # set variables
 $url=$args[0]
 $workdir=Join-Path -Path $pwd -ChildPath "crawls"
-$domain=([System.Uri]$url).Host -replace '^www\.'
+$normalized_url=Normalize-Url $url
 $now=Get-Date -UFormat '+%Y-%m-%dT%H%M%S'
-$crawldir=Join-Path -Path $workdir -ChildPath $now-$domain
+$crawldir=Join-Path -Path $workdir -ChildPath "$now-$normalized_url"
 
 # build containers
 docker.exe build -f resources/Dockerfile.webrecorder . -t site-archiving-toolkit-webrecorder
@@ -38,13 +56,13 @@ docker.exe build -f resources/Dockerfile.httrack . -t site-archiving-toolkit-htt
 # do browsertrix crawl
 if ($enable_browsertrix -eq "TRUE") {
     mkdir $crawldir\webrecorder
-    docker run --name webrecorder -d --rm -p 9037:9037 -v $crawldir/:/output -it site-archiving-toolkit-webrecorder  /bin/bash /webrecorder.sh $url $domain $now
+    docker run --name webrecorder -d --rm -p 9037:9037 -v $crawldir/:/output -it site-archiving-toolkit-webrecorder  /bin/bash /webrecorder.sh $url $normalized_url $now
 }
 
 # do httrack crawl
 if ($enable_httrack -eq "TRUE") {
     mkdir $crawldir\httrack
-    docker run --name httrack -d --rm -v $crawldir/:/output site-archiving-toolkit-httrack /bin/bash /httrack.sh $url $domain $now
+    docker run --name httrack -d --rm -v $crawldir/:/output site-archiving-toolkit-httrack /bin/bash /httrack.sh $url $normalized_url $now
 }
 
 # attach to crawls as they run
