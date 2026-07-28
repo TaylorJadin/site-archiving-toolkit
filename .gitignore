@@ -2,3 +2,6 @@ crawls/*
 .DS_Store
 releases/*
 .env
+archive.ini
+/archive
+/archive.exe
