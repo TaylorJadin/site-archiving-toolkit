@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
 # Make archive.ini if it doesn't exist
-if [ ! -f archive.ini ]; then
-	cp resources/defaults.ini archive.ini
+if [ ! -f .env ]; then
+	cp resources/env.example .env
 fi
 
-source archive.ini
+source .env
 
 # Check if URL is formatted correctly
 if [[ $1 != http* ]]; then
