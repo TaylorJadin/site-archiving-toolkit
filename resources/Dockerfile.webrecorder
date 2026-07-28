@@ -1,7 +1,6 @@
 FROM webrecorder/browsertrix-crawler:latest
-RUN apt update && apt install zip -y
+RUN apt update && apt install zip wget -y
 COPY resources/index.html /index.html
 COPY resources/redirect.php /redirect.php
 COPY resources/.htaccess /.htaccess
 COPY resources/webrecorder.sh /webrecorder.sh
-COPY archive.ini /archive.ini

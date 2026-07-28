@@ -2,87 +2,101 @@
 
 ## What is this thing?
 
-The Site Archiving Toolkit allows you to quickly and easily make both flattened HTML and web archive versions of websites. These scripts are a relatively easy to use command line interface for crawling sites using both [HTTrack](https://www.httrack.com) and [Browsertrix Crawler](https://github.com/webrecorder/browsertrix-crawler) (from the [Webrecorder](https://webrecorder.net) project) in Docker.
+The Site Archiving Toolkit makes [Webrecorder](https://webrecorder.net) / WACZ archives of websites using [Browsertrix Crawler](https://github.com/webrecorder/browsertrix-crawler) in Docker. A Go terminal UI (built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) and [Lip Gloss](https://github.com/charmbracelet/lipgloss)) lets you queue multiple URLs, watch crawl progress, and skip or cancel jobs.
 
 Check out this video to see what it does and how to use it:
 
 [Site Archiving Toolkit - reclaim.tv](https://archive.reclaim.tv/w/qYeNBzUdDWDxWi8pFSLNB1)
 
-Check ou this example to see the types of archives it makes: 
+Example archives:
 
 [archiving.ca.reclaim.cloud](https://archiving.ca.reclaim.cloud/)
-
-These archives are zipped and easy to download, where they can be placed on just about any web server and made public! Here's an example of one in use:
 
 [digciz.jadin.me](https://digciz.jadin.me)
 
 ### Features
 
-- Crawl an entire site / domain for offline browsing, preservation, or whatever other purpose
-- Crawls can run in the background after they’ve been started, even if you close your terminal
-- Accepts multiple URLs at once, to queue up multiple crawl jobs on Reclaim Cloud, Linux, or macOS (this is not supported on the Windows version)
+- Crawl an entire site / domain for offline browsing or preservation (WACZ + ReplayWeb.page)
+- Interactive TUI for entering multiple URLs
+- Live crawl progress (`Site 1/10`) with skip / cancel controls and a scrolling log panel
 - Preview archived pages using a local web server
 - Automatically creates zip files for easy download/upload
-- Override crawl settings using the `.env` file. Delete the file to return to defaults!
+- Override crawl settings using the `.env` file (delete it to return to defaults)
+
+## Requirements
+
+- [Docker](https://www.docker.com/) (Docker Desktop on macOS/Windows)
+- A release binary, or [Go 1.24+](https://go.dev/dl/) to build from source
 
 ## How do I use it?
 
-The Site Archiving Toolkit is designed first to be run on Reclaim Cloud, but can also be used on any computer that has Docker installed.
+### On Reclaim Cloud
 
-### Using the Site Archiving Toolkit on Reclaim Cloud
+Install the Site Archiving Toolkit from the Marketplace, open a terminal, and run:
 
-Install the Site Archiving Toolkit using the Marketplace. Open the terminal (either via SSH or the built-in Web SSH feature) to start crawling sites.
-
-The `archive` command will start crawling a site. Here are some examples:
-
-This will crawl all pages on the "url.com" domain over HTTPS:
 ```bash
-archive https://url.com
+./archive
 ```
 
-You can give the archive command a list of URLs seperated by spaces, and it will crawl them sequentially:
+Enter one URL per line in the TUI, then press `ctrl+s` to start. While a crawl is running:
+
+- `s` — skip the current URL
+- `c` — cancel the entire archive run
+
+Stop a runaway crawl from another terminal:
+
 ```bash
-archive https://url.com https://anotherurl.com
+./archive quit
 ```
 
-Once you start a crawl using the `archive` command, you no longer need to keep your terminal open, as it will run in the background. If you need to stop crawling a site, open a new terminal and use `quit-crawlers` which will quit all httrack or browsertrix crawler jobs:
+### Previewing and downloading archives
+
+Visit the environment URL to browse completed and in-progress crawls, or start a local preview server:
+
+```bash
+./archive server start   # http://localhost
+./archive server stop
 ```
-quit-crawlers
-``` 
 
-### Previewing and Downloading your archived sites
+Crawl output lives in the `crawls` directory (on Reclaim Cloud: `/root/site-archiving-toolkit/crawls`).
 
-Visit the environment URL of your Site Archiving Toolkit environment to see all completed and in-progress crawls. When they are finished you can view them and download them as zip files. If you need to delete crawls that were made previously and are no longer needed, you can find them in the `crawls` directory, located at `/root/site-archiving-toolkit/crawls`, which is also bookmarked in the Reclaim Cloud file manager.
+### On your own computer
 
-### Using the Site Archiving Toolkit on your own computer
+1. Install and launch [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+2. Download the latest release for your OS from the [releases page](https://github.com/TaylorJadin/site-archiving-toolkit/releases)
+3. Unzip somewhere convenient and open a terminal in that folder
+4. Run the binary:
 
-- Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- Launch Docker Desktop
-- Download the latest version of the Site Archiving Toolkit for your OS from the [releases page](https://github.com/TaylorJadin/site-archiving-toolkit/releases)
-- Unzip the release and place it somewhere convenient (maybe your Home directory or Documents folder)
-- Open the Terminal on macOS, or Powershell on Windows
-- `cd` to the folder you unzipped the release into (ex: `cd ~/Documents/site-archiving-toolkit`)
+```bash
+# macOS / Linux
+./archive
 
-#### From here you can run any of the following commands on macOS or Linux:
+# Windows
+.\archive.exe
+```
 
-`./archive.sh` to archive sites
+### Build from source
 
-`./quit-crawlers.sh` to quit any in-progress crawls
+```bash
+go build -o archive ./cmd/archive
+./archive
+```
 
-`./attach.sh` to re-attach to an in-progress crawl. This is useful if you started one earlier and closed your terminal, and now you want to check back up on their status.
+### Commands
 
-`./start-server.sh` to start a local web server so you can preview your achived sites. After running this command, open up a web browser and navigate to <http://localhost>
+| Command | Description |
+| --- | --- |
+| `archive` | Launch the interactive TUI |
+| `archive quit` | Stop any running Browsertrix crawl |
+| `archive server start` | Start the local preview server |
+| `archive server stop` | Stop the local preview server |
+| `archive help` | Show help |
 
-`./stop-server.sh` to stop the local web server
+### Configuration
 
-#### Similar commands are available on Windows when using Powershell:
+On first run a `.env` file is created from `resources/env.example`. Useful options:
 
-`.\archive.ps1` to archive sites. Note that the Windows version only supports one URL at a time.
-
-`.\quit-crawlers.ps1` to quit any in-progress crawls
-
-`.\attach.ps1` to re-attach to an in-progress crawl. This is useful if you started one earlier and closed your terminal, and now you want to check back up on the status.
-
-`.\start-server.ps1` to start a local web server so you can preview your achived sites. After running this command, open up a web browser and navigate to <http://localhost>
-
-`.\stop-server.ps1` to stop the local web server
+- `browsertrix_parameters` — extra flags for Browsertrix Crawler
+- `create_webrecorder_zip` — zip each archive for download (`TRUE`/`FALSE`)
+- `browsertrix_redirect_template` — include Apache redirect helpers
+- `skip_existing_crawls` — skip URLs that already have a completed crawl
