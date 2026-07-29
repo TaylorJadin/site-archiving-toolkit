@@ -38,7 +38,7 @@ Install the Site Archiving Toolkit from the Marketplace, open a terminal, and ru
 ./archive
 ```
 
-Enter one or more URLs in the TUI (`shift+enter` / `ctrl+j` for additional lines, or paste a multiline list), then press `enter` to start. While a crawl is running:
+Enter one or more URLs in the TUI (separated by spaces or newlines; `shift+enter` / `ctrl+j` also insert a new line), then press `enter` to start. While a crawl is running:
 
 - `s` — skip the current URL
 - `c` — cancel the entire archive run

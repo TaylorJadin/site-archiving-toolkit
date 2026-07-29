@@ -113,7 +113,7 @@ var (
 // New creates the initial TUI model.
 func New(cfg *config.Config) Model {
 	ta := textarea.New()
-	ta.Placeholder = "https://example.com\nhttps://another-site.org"
+	ta.Placeholder = "https://example.com https://another-site.org"
 	ta.Focus()
 	ta.CharLimit = 0
 	ta.SetWidth(72)
@@ -261,16 +261,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) startArchive() (Model, tea.Cmd) {
-	raw := m.textarea.Value()
-	lines := strings.Split(raw, "\n")
-	urls := make([]string, 0, len(lines))
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		urls = append(urls, line)
-	}
+	urls := parseURLs(m.textarea.Value())
 	if len(urls) == 0 {
 		m.errMsg = "Enter at least one URL"
 		return m, nil
@@ -298,6 +289,19 @@ func (m Model) startArchive() (Model, tea.Cmd) {
 		},
 		listenEvents(orch),
 	)
+}
+
+// parseURLs splits input on any whitespace (spaces, newlines, tabs) into URL tokens.
+func parseURLs(raw string) []string {
+	fields := strings.Fields(raw)
+	urls := make([]string, 0, len(fields))
+	for _, u := range fields {
+		if u == "" {
+			continue
+		}
+		urls = append(urls, u)
+	}
+	return urls
 }
 
 func listenEvents(orch *archive.Orchestrator) tea.Cmd {
@@ -421,9 +425,9 @@ func (m Model) viewInput() string {
 	var b strings.Builder
 	b.WriteString(titleStyle.Render("Site Archiving Toolkit"))
 	b.WriteString("\n")
-	b.WriteString(subtitleStyle.Render("Webrecorder archives · one URL per line"))
+	b.WriteString(subtitleStyle.Render("Enter URL(s) to crawl (multiple URLs can be separated by a space or new line)"))
 	b.WriteString("\n\n")
-	b.WriteString(boxStyle.Render(m.textarea.View()))
+	b.WriteString(m.textarea.View())
 	b.WriteString("\n\n")
 	if m.errMsg != "" {
 		b.WriteString(errorStyle.Render(m.errMsg))
