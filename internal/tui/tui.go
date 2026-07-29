@@ -219,6 +219,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+	case tea.PasteMsg:
+		// Bracketed paste (e.g. multiple URLs) — keep newlines intact.
+		if m.phase == phaseInput {
+			var cmd tea.Cmd
+			m.textarea, cmd = m.textarea.Update(msg)
+			return m, cmd
+		}
+
 	case spinner.TickMsg:
 		if m.phase == phaseRunning {
 			var cmd tea.Cmd
@@ -235,6 +243,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusLabel = "All done"
 		}
 		return m, nil
+	}
+
+	// Cursor blink and other widget messages.
+	if m.phase == phaseInput {
+		var cmd tea.Cmd
+		m.textarea, cmd = m.textarea.Update(msg)
+		return m, cmd
+	}
+	if m.phase == phaseRunning {
+		var cmd tea.Cmd
+		m.viewport, cmd = m.viewport.Update(msg)
+		return m, cmd
 	}
 
 	return m, nil

@@ -85,6 +85,7 @@ Usage:
 TUI keys:
   enter              Start archiving
   shift+enter/ctrl+j Add another URL on a new line
+  (paste)            Multiline URL lists paste as separate lines
   s                  Skip the current URL
   c                  Cancel the entire archive run
   q / esc            Quit
