@@ -89,6 +89,24 @@ func NewOrchestrator(cfg *config.Config, urls []string) *Orchestrator {
 	}
 }
 
+// NewOrchestratorFromSession rebuilds an orchestrator from a persisted session.
+func NewOrchestratorFromSession(cfg *config.Config, session *Session) *Orchestrator {
+	jobs := make([]Job, len(session.Jobs))
+	copy(jobs, session.Jobs)
+	for i := range jobs {
+		if jobs[i].Status == StatusRunning {
+			jobs[i].Status = StatusPending
+		}
+	}
+	return &Orchestrator{
+		Cfg:      cfg,
+		Jobs:     jobs,
+		Events:   make(chan Event, 256),
+		skipCh:   make(chan struct{}, 1),
+		cancelCh: make(chan struct{}, 1),
+	}
+}
+
 // SkipCurrent requests skipping the active crawl.
 func (o *Orchestrator) SkipCurrent() {
 	select {
@@ -154,7 +172,7 @@ func (o *Orchestrator) Run(ctx context.Context) {
 		return
 	}
 	if running {
-		o.emit(Event{Type: EventError, Message: "a crawl is already running; use 'archive quit' first"})
+		o.emit(Event{Type: EventError, Message: "a crawl is already running; reattach with archive or use 'archive quit' first"})
 		return
 	}
 
@@ -191,6 +209,12 @@ func (o *Orchestrator) Run(ctx context.Context) {
 		}
 
 		job := &o.Jobs[i]
+		if job.Status == StatusCompleted || job.Status == StatusSkipped {
+			continue
+		}
+		if job.Status == StatusCancelled {
+			continue
+		}
 
 		if o.Cfg.SkipExistingCrawls {
 			if skipped, name := shouldSkipExisting(workdir, job.NormalizedURL, o.log); skipped {

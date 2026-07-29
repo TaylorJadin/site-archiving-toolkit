@@ -15,6 +15,7 @@ type Config struct {
 	BrowsertrixRedirectTemplate bool
 	CreateWebrecorderZip        bool
 	SkipExistingCrawls          bool
+	BackgroundModeDefault       bool
 	RootDir                     string
 }
 
@@ -33,6 +34,9 @@ create_webrecorder_zip=TRUE
 # Skip crawls for sites that already exist in the crawl directory based on the
 # normalized URL (TRUE or FALSE)
 skip_existing_crawls=FALSE
+
+# Start crawls in the background by default, detaching from the TUI (TRUE or FALSE)
+background_mode_default=FALSE
 `
 
 // EnsureEnv creates .env from defaults when missing.
@@ -66,6 +70,7 @@ func Load(rootDir string) (*Config, error) {
 		BrowsertrixRedirectTemplate: truthy(get(vals, "browsertrix_redirect_template", "FALSE")),
 		CreateWebrecorderZip:        truthy(get(vals, "create_webrecorder_zip", "TRUE")),
 		SkipExistingCrawls:          truthy(get(vals, "skip_existing_crawls", "FALSE")),
+		BackgroundModeDefault:       truthy(get(vals, "background_mode_default", "FALSE")),
 		RootDir:                     rootDir,
 	}
 	return cfg, nil

@@ -7,6 +7,7 @@ require (
 	charm.land/bubbletea/v2 v2.0.8
 	charm.land/lipgloss/v2 v2.0.5
 	github.com/joho/godotenv v1.5.1
+	github.com/mattn/go-isatty v0.0.24
 )
 
 require (

@@ -38,10 +38,22 @@ Install the Site Archiving Toolkit from the Marketplace, open a terminal, and ru
 ./archive
 ```
 
-Enter one or more URLs in the TUI (separated by spaces or newlines; `shift+enter` / `ctrl+j` also insert a new line), then press `enter` to start. While a crawl is running:
+Enter one or more URLs in the TUI (separated by spaces or newlines; `shift+enter` / `ctrl+j` also insert a new line), then press `enter` to start. You can also pass URLs on the command line or via stdin:
+
+```bash
+./archive https://example.com https://example.org
+echo "https://example.com" | ./archive
+```
+
+While a crawl is running:
 
 - `s` — skip the current URL
-- `c` — cancel the entire archive run
+- `c` / `esc` — stop the crawl (and the Docker container)
+- `d` — detach: crawl continues in the background; run `./archive` again to reattach
+
+If the last session did not finish, `./archive` offers **resume** (`r` on the input screen, or `./archive resume`).
+
+Set `background_mode_default=TRUE` in `.env` to start new crawls detached automatically.
 
 Stop a runaway crawl from another terminal:
 
