@@ -125,6 +125,18 @@ func New(cfg *config.Config) Model {
 		key.WithKeys("shift+enter", "ctrl+j"),
 		key.WithHelp("shift+enter", "insert newline"),
 	)
+	// Explicit light styles: default dark styles paint a black cursor line that
+	// hides typed text on light terminals.
+	styles := textarea.DefaultLightStyles()
+	styles.Focused.Text = lipgloss.NewStyle().Foreground(colSea)
+	styles.Focused.Placeholder = lipgloss.NewStyle().Foreground(colMuted)
+	styles.Focused.Prompt = lipgloss.NewStyle().Foreground(colSea)
+	styles.Focused.CursorLine = lipgloss.NewStyle()
+	styles.Blurred.Text = lipgloss.NewStyle().Foreground(colMuted)
+	styles.Blurred.Placeholder = lipgloss.NewStyle().Foreground(colMuted)
+	styles.Blurred.Prompt = lipgloss.NewStyle().Foreground(colMuted)
+	styles.Cursor.Color = colSea
+	ta.SetStyles(styles)
 
 	sp := spinner.New(
 		spinner.WithSpinner(spinner.Dot),
@@ -389,7 +401,7 @@ func (m Model) viewInput() string {
 	var b strings.Builder
 	b.WriteString(titleStyle.Render("Site Archiving Toolkit"))
 	b.WriteString("\n")
-	b.WriteString(subtitleStyle.Render("Webrecorder archives · one URL per line · shift+enter for another"))
+	b.WriteString(subtitleStyle.Render("Webrecorder archives · one URL per line"))
 	b.WriteString("\n\n")
 	b.WriteString(boxStyle.Render(m.textarea.View()))
 	b.WriteString("\n\n")
@@ -398,7 +410,7 @@ func (m Model) viewInput() string {
 		b.WriteString("\n\n")
 	}
 	b.WriteString(btnStyle.Render("enter start"))
-	b.WriteString(hintStyle.Render("  shift+enter new line · esc quit"))
+	b.WriteString(hintStyle.Render("  shift+enter / ctrl+j new line · esc quit"))
 	b.WriteString("\n")
 	return b.String()
 }

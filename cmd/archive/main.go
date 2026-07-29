@@ -83,11 +83,11 @@ Usage:
   archive help         Show this help
 
 TUI keys:
-  enter         Start archiving
-  shift+enter   Add another URL on a new line
-  s             Skip the current URL
-  c             Cancel the entire archive run
-  q / esc       Quit
+  enter              Start archiving
+  shift+enter/ctrl+j Add another URL on a new line
+  s                  Skip the current URL
+  c                  Cancel the entire archive run
+  q / esc            Quit
 
 Override crawl settings in the .env file (created automatically on first run).
 `)
