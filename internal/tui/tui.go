@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textarea"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/TaylorJadin/site-archiving-toolkit/internal/archive"
 	"github.com/TaylorJadin/site-archiving-toolkit/internal/config"
@@ -75,11 +76,6 @@ var (
 			BorderForeground(colSea).
 			Padding(0, 1)
 
-	logBoxStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(colMuted).
-			Padding(0, 1)
-
 	btnStyle = lipgloss.NewStyle().
 			Foreground(colFoam).
 			Background(colSea).
@@ -109,6 +105,9 @@ var (
 
 	okStyle = lipgloss.NewStyle().
 		Foreground(colOk)
+
+	ruleStyle = lipgloss.NewStyle().
+			Foreground(colMuted)
 )
 
 // New creates the initial TUI model.
@@ -121,12 +120,18 @@ func New(cfg *config.Config) Model {
 	ta.SetHeight(8)
 	ta.ShowLineNumbers = false
 	ta.Prompt = "│ "
+	// Enter starts the crawl; Shift+Enter (and ctrl+j as a fallback) inserts a newline.
+	ta.KeyMap.InsertNewline = key.NewBinding(
+		key.WithKeys("shift+enter", "ctrl+j"),
+		key.WithHelp("shift+enter", "insert newline"),
+	)
 
-	sp := spinner.New()
-	sp.Spinner = spinner.Dot
-	sp.Style = lipgloss.NewStyle().Foreground(colSeaBright)
+	sp := spinner.New(
+		spinner.WithSpinner(spinner.Dot),
+		spinner.WithStyle(lipgloss.NewStyle().Foreground(colSeaBright)),
+	)
 
-	vp := viewport.New(72, 12)
+	vp := viewport.New(viewport.WithWidth(72), viewport.WithHeight(12))
 	vp.SetContent("")
 
 	return Model{
@@ -154,13 +159,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.resize()
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch m.phase {
 		case phaseInput:
 			switch msg.String() {
 			case "ctrl+c", "esc":
 				return m, tea.Quit
-			case "ctrl+s":
+			case "enter":
 				return m.startArchive()
 			}
 			var cmd tea.Cmd
@@ -337,25 +342,28 @@ func (m *Model) appendLog(line string) {
 }
 
 func (m *Model) resize() {
-	w := m.width - 4
-	if w < 40 {
-		w = 40
+	inputW := m.width - 4
+	if inputW < 40 {
+		inputW = 40
 	}
-	if w > 100 {
-		w = 100
+	if inputW > 100 {
+		inputW = 100
 	}
-	m.textarea.SetWidth(w)
+	m.textarea.SetWidth(inputW)
 
-	logH := m.height - 14
+	logW := m.width
+	if logW < 40 {
+		logW = 40
+	}
+	logH := m.height - 12
 	if logH < 6 {
 		logH = 6
 	}
-	m.viewport.Width = w
-	m.viewport.Height = logH
+	m.viewport.SetWidth(logW)
+	m.viewport.SetHeight(logH)
 }
 
-// View implements tea.Model.
-func (m Model) View() string {
+func (m Model) content() string {
 	switch m.phase {
 	case phaseInput:
 		return m.viewInput()
@@ -370,11 +378,18 @@ func (m Model) View() string {
 	}
 }
 
+// View implements tea.Model.
+func (m Model) View() tea.View {
+	v := tea.NewView(m.content())
+	v.AltScreen = true
+	return v
+}
+
 func (m Model) viewInput() string {
 	var b strings.Builder
 	b.WriteString(titleStyle.Render("Site Archiving Toolkit"))
 	b.WriteString("\n")
-	b.WriteString(subtitleStyle.Render("Webrecorder archives · enter one URL per line"))
+	b.WriteString(subtitleStyle.Render("Webrecorder archives · one URL per line · shift+enter for another"))
 	b.WriteString("\n\n")
 	b.WriteString(boxStyle.Render(m.textarea.View()))
 	b.WriteString("\n\n")
@@ -382,8 +397,8 @@ func (m Model) viewInput() string {
 		b.WriteString(errorStyle.Render(m.errMsg))
 		b.WriteString("\n\n")
 	}
-	b.WriteString(btnStyle.Render("ctrl+s start"))
-	b.WriteString(hintStyle.Render("  esc quit"))
+	b.WriteString(btnStyle.Render("enter start"))
+	b.WriteString(hintStyle.Render("  shift+enter new line · esc quit"))
 	b.WriteString("\n")
 	return b.String()
 }
@@ -411,16 +426,19 @@ func (m Model) viewRunning() string {
 		b.WriteString(btnStyle.Render("s skip"))
 		b.WriteString(btnDangerStyle.Render("c cancel"))
 		b.WriteString(hintStyle.Render("  ↑↓ scroll logs"))
-		b.WriteString("\n\n")
+		b.WriteString("\n")
 	} else {
 		b.WriteString(btnDangerStyle.Render("c cancel"))
-		b.WriteString("\n\n")
+		b.WriteString("\n")
 	}
 
-	header := lipgloss.NewStyle().Foreground(colMuted).Render("Crawl log")
-	b.WriteString(header)
+	ruleW := m.viewport.Width()
+	if ruleW < 1 {
+		ruleW = 40
+	}
+	b.WriteString(ruleStyle.Render(strings.Repeat("─", ruleW)))
 	b.WriteString("\n")
-	b.WriteString(logBoxStyle.Width(m.viewport.Width + 2).Render(m.viewport.View()))
+	b.WriteString(m.viewport.View())
 	b.WriteString("\n")
 	return b.String()
 }
@@ -455,7 +473,7 @@ func (m Model) viewError() string {
 
 // Run starts the Bubble Tea program.
 func Run(cfg *config.Config) error {
-	p := tea.NewProgram(New(cfg), tea.WithAltScreen())
+	p := tea.NewProgram(New(cfg))
 	_, err := p.Run()
 	return err
 }
