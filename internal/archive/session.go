@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -175,28 +174,22 @@ func (s *Session) ProgressSummary() string {
 // RunnerAlive reports whether the process that owns this session is running.
 // A session that has not recorded a PID yet counts as neither alive nor stopped.
 func (s *Session) RunnerAlive() bool {
-	return s != nil && s.PID > 0 && syscall.Kill(s.PID, 0) == nil
+	return s != nil && s.PID > 0 && processAlive(s.PID)
 }
 
 // RunnerStopped reports whether the process that owned this session is gone.
 func (s *Session) RunnerStopped() bool {
-	return s != nil && s.PID > 0 && syscall.Kill(s.PID, 0) != nil
+	return s != nil && s.PID > 0 && !processAlive(s.PID)
 }
 
-// ActiveSession returns the session currently being crawled, or nil if the last
-// session already finished.
+// ActiveSession returns the session a live runner is working on, or nil if the
+// last session already finished or its runner died.
 func ActiveSession(rootDir string) *Session {
 	s, err := LoadSession(rootDir)
-	if err != nil || s == nil || s.Complete {
+	if err != nil || s == nil || s.Complete || !s.RunnerAlive() {
 		return nil
 	}
-	if s.RunnerAlive() {
-		return s
-	}
-	if running, err := IsCrawlRunning(); err == nil && running {
-		return s
-	}
-	return nil
+	return s
 }
 
 // ApplyEvent updates session state from an orchestrator event.

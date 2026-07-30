@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"syscall"
 	"time"
 )
 
@@ -28,7 +27,13 @@ func StartSessionRunner(rootDir string, session *Session) error {
 	if err := DockerAvailable(); err != nil {
 		return err
 	}
-	if ActiveSession(rootDir) != nil {
+	// Only one crawl at a time: the container name is fixed, and a second
+	// runner would fight over the session file.
+	running, err := IsCrawlRunning()
+	if err != nil {
+		return err
+	}
+	if running || ActiveSession(rootDir) != nil {
 		return errors.New("a crawl is already running; reattach with archive, or stop it with archive quit")
 	}
 
@@ -49,7 +54,7 @@ func StartSessionRunner(rootDir string, session *Session) error {
 	}
 	cmd := exec.Command(exe, "session-run")
 	cmd.Dir = rootDir
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	cmd.SysProcAttr = detachAttrs()
 	if err := cmd.Start(); err != nil {
 		return err
 	}
