@@ -5,3 +5,8 @@ releases/*
 archive.ini
 /archive
 /archive.exe
+
+.archive_state.json
+crawls/.last-session.json
+crawls/.last-session.log
+crawls/.session.control
