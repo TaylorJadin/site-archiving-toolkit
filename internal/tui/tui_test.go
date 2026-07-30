@@ -91,3 +91,22 @@ func TestViewDoesNotUseAltScreen(t *testing.T) {
 		t.Fatal("expected alt-screen disabled")
 	}
 }
+
+func TestViewRunningKeyHints(t *testing.T) {
+	m := New(&config.Config{}, Options{})
+	m.phase = phaseRunning
+	m.building = false
+	m.width, m.height = 80, 24
+	m.resize()
+	view := m.viewRunning()
+	for _, want := range []string{"s skip url", "d detach", "q quit"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("missing %q in running view:\n%s", want, view)
+		}
+	}
+	for _, ban := range []string{"c cancel", "esc stop"} {
+		if strings.Contains(view, ban) {
+			t.Fatalf("unexpected leftover hint %q in running view:\n%s", ban, view)
+		}
+	}
+}

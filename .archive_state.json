@@ -1,0 +1,5 @@
+{
+  "urls": ["https://example.com", "https://example.org"],
+  "completed": ["https://example.com"],
+  "status": "incomplete"
+}

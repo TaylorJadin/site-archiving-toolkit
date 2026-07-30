@@ -145,11 +145,10 @@ TUI keys:
   enter              Start archiving
   shift+enter/ctrl+j Add another URL on a new line
   (spaces/newlines)  Separate multiple URLs
-  d                  Detach — crawl continues in background
   s                  Skip the current URL
-  c / esc            Cancel/stop the crawl and exit
+  d                  Detach — crawl continues in background
+  q                  Quit (stops the crawl and Docker container)
   r                  Resume last incomplete session (input screen)
-  q / esc            Quit
 
 Settings in .env (created automatically on first run):
   background_mode_default=TRUE   Start new crawls detached by default

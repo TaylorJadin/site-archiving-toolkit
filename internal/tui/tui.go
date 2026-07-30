@@ -235,14 +235,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "s", "S":
 				if !m.building {
 					_ = archive.SendControl(m.cfg.RootDir, "skip")
-					m.statusLabel = "Skipping..."
+					m.statusLabel = "Skipping URL..."
 				}
 				return m, nil
-			case "c", "C":
-				return m.cancelSession()
 			case "d", "D":
 				return m.detachSession()
-			case "ctrl+c", "esc", "q", "Q":
+			case "q", "Q", "ctrl+c", "esc":
 				return m.cancelSession()
 			}
 			var cmd tea.Cmd
@@ -429,7 +427,7 @@ func (m Model) cancelSession() (Model, tea.Cmd) {
 		return m, tea.Quit
 	}
 	_ = archive.SendControl(m.cfg.RootDir, "cancel")
-	m.statusLabel = "Stopping..."
+	m.statusLabel = "Quitting..."
 	return m, pollSession(m.cfg.RootDir, m.logOffset)
 }
 
@@ -569,15 +567,14 @@ func (m Model) viewRunning() string {
 	b.WriteString("\n")
 
 	if !m.building {
-		b.WriteString(btnStyle.Render("s skip"))
-		b.WriteString(btnDangerStyle.Render("c cancel"))
+		b.WriteString(btnStyle.Render("s skip url"))
 		b.WriteString(btnStyle.Render("d detach"))
-		b.WriteString(hintStyle.Render("  esc stop · ↑↓ scroll logs"))
+		b.WriteString(btnDangerStyle.Render("q quit"))
+		b.WriteString(hintStyle.Render("  ↑↓ scroll logs"))
 		b.WriteString("\n")
 	} else {
-		b.WriteString(btnDangerStyle.Render("c cancel"))
 		b.WriteString(btnStyle.Render("d detach"))
-		b.WriteString(hintStyle.Render("  esc stop"))
+		b.WriteString(btnDangerStyle.Render("q quit"))
 		b.WriteString("\n")
 	}
 

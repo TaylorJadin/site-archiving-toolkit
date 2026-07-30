@@ -2,7 +2,7 @@
 
 ## What is this thing?
 
-The Site Archiving Toolkit makes [Webrecorder](https://webrecorder.net) / WACZ archives of websites using [Browsertrix Crawler](https://github.com/webrecorder/browsertrix-crawler) in Docker. A Go terminal UI (built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) and [Lip Gloss](https://github.com/charmbracelet/lipgloss)) lets you queue multiple URLs, watch crawl progress, and skip or cancel jobs.
+The Site Archiving Toolkit makes [Webrecorder](https://webrecorder.net) / WACZ archives of websites using [Browsertrix Crawler](https://github.com/webrecorder/browsertrix-crawler) in Docker. A Go terminal UI (built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) and [Lip Gloss](https://github.com/charmbracelet/lipgloss)) lets you queue multiple URLs, watch crawl progress, skip a URL, detach, or quit.
 
 Check out this video to see what it does and how to use it:
 
@@ -18,7 +18,7 @@ Example archives:
 
 - Crawl an entire site / domain for offline browsing or preservation (WACZ + ReplayWeb.page)
 - Interactive TUI for entering multiple URLs
-- Live crawl progress (`Site 1/10`) with skip / cancel controls and a scrolling log panel
+- Live crawl progress (`Site 1/10`) with skip-url / detach / quit controls and a scrolling log panel
 - Preview archived pages using a local web server
 - Automatically creates zip files for easy download/upload
 - Override crawl settings using the `.env` file (delete it to return to defaults)
@@ -48,8 +48,8 @@ echo "https://example.com" | ./archive
 While a crawl is running:
 
 - `s` — skip the current URL
-- `c` / `esc` — stop the crawl (and the Docker container)
 - `d` — detach: crawl continues in the background; run `./archive` again to reattach
+- `q` — quit (stops the crawl and the Docker container)
 
 If the last session did not finish, `./archive` offers **resume** (`r` on the input screen, or `./archive resume`).
 
