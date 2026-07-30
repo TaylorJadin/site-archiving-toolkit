@@ -5,22 +5,28 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/TaylorJadin/site-archiving-toolkit/resources"
 )
 
 const (
+	// ContainerName is the crawler container; only one may run at a time.
 	ContainerName = "webrecorder"
-	ImageName     = "site-archiving-toolkit-webrecorder"
+	// PreviewContainerName serves crawls/ over HTTP on port 80.
+	PreviewContainerName = "site-archiving-toolkit-preview"
+	// ImageName is the locally built crawler image.
+	ImageName = "site-archiving-toolkit-webrecorder"
 )
 
 // DockerAvailable checks whether the Docker daemon is reachable.
 func DockerAvailable() error {
-	cmd := exec.Command("docker", "ps")
-	out, err := cmd.CombinedOutput()
+	out, err := exec.Command("docker", "ps").CombinedOutput()
 	if err != nil {
 		msg := strings.TrimSpace(string(out))
 		if msg == "" {
@@ -31,111 +37,84 @@ func DockerAvailable() error {
 	return nil
 }
 
-// IsCrawlRunning reports whether a webrecorder container is already running.
-func IsCrawlRunning() (bool, error) {
-	cmd := exec.Command("docker", "ps", "-q", "-f", "name="+ContainerName)
-	out, err := cmd.Output()
+// containerRunning reports whether a container with exactly this name is up.
+func containerRunning(name string) (bool, error) {
+	out, err := exec.Command("docker", "ps", "-q", "-f", "name=^"+name+"$").Output()
 	if err != nil {
 		return false, err
 	}
 	return strings.TrimSpace(string(out)) != "", nil
 }
 
-// BuildImage builds the webrecorder Docker image.
-func BuildImage(ctx context.Context, rootDir string, logFn func(string)) error {
-	dockerfile := filepath.Join("resources", "Dockerfile.webrecorder")
+// IsCrawlRunning reports whether a crawler container is already running.
+func IsCrawlRunning() (bool, error) {
+	return containerRunning(ContainerName)
+}
+
+// BuildImage builds the crawler image from the embedded build context.
+func BuildImage(ctx context.Context, logFn func(string)) error {
+	dir, err := os.MkdirTemp("", "site-archiving-toolkit-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(dir)
+
+	entries, err := fs.ReadDir(resources.BuildContext, ".")
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		data, err := resources.BuildContext.ReadFile(e.Name())
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(dir, e.Name()), data, 0o644); err != nil {
+			return err
+		}
+	}
+
+	// -f is resolved against the caller's working directory, not the context.
 	cmd := exec.CommandContext(ctx, "docker", "build",
-		"-f", dockerfile,
-		".",
-		"-t", ImageName,
-	)
-	cmd.Dir = rootDir
+		"-f", filepath.Join(dir, resources.Dockerfile), "-t", ImageName, dir)
 	return streamCmd(cmd, logFn)
 }
 
 // RunOptions configures a single crawl container run.
 type RunOptions struct {
-	RootDir       string
 	CrawlDir      string
 	URL           string
 	NormalizedURL string
 	Timestamp     string
-	ArchiveINI    string // path to archive.ini on host
+	Env           []string
 }
 
 // CrawlProcess represents a running crawl container.
 type CrawlProcess struct {
-	cmd    *exec.Cmd
 	cancel context.CancelFunc
 	done   chan error
 	once   sync.Once
 }
 
-// StartCrawl starts the webrecorder container and streams logs via logFn.
-// It returns a CrawlProcess that can be waited on or stopped.
-func StartCrawl(ctx context.Context, opts RunOptions, logFn func(string)) (*CrawlProcess, error) {
+// StartCrawl starts the crawler container and streams its output via logFn.
+// The returned CrawlProcess can be waited on or stopped.
+func StartCrawl(ctx context.Context, opts RunOptions, logFn func(string)) *CrawlProcess {
 	ctx, cancel := context.WithCancel(ctx)
 
-	webrecorderDir := filepath.Join(opts.CrawlDir, "webrecorder")
-	if err := os.MkdirAll(webrecorderDir, 0o777); err != nil {
-		cancel()
-		return nil, err
+	args := []string{"run", "--name", ContainerName, "--rm", "-v", opts.CrawlDir + ":/output"}
+	for _, e := range opts.Env {
+		args = append(args, "-e", e)
 	}
-
-	args := []string{
-		"run",
-		"--name", ContainerName,
-		"--rm",
-		"-v", opts.CrawlDir + ":/output",
-		"-v", opts.ArchiveINI + ":/archive.ini:ro",
-		ImageName,
-		"bash", "/webrecorder.sh", opts.URL, opts.NormalizedURL, opts.Timestamp,
-	}
+	args = append(args, ImageName, "bash", "/webrecorder.sh", opts.URL, opts.NormalizedURL, opts.Timestamp)
 
 	cmd := exec.CommandContext(ctx, "docker", args...)
-	cmd.Dir = opts.RootDir
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		cancel()
-		return nil, err
-	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		cancel()
-		return nil, err
-	}
-
-	if err := cmd.Start(); err != nil {
-		cancel()
-		return nil, fmt.Errorf("start container: %w", err)
-	}
-
-	cp := &CrawlProcess{
-		cmd:    cmd,
-		cancel: cancel,
-		done:   make(chan error, 1),
-	}
-
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		scanLines(stdout, logFn)
-	}()
-	go func() {
-		defer wg.Done()
-		scanLines(stderr, logFn)
-	}()
+	cp := &CrawlProcess{cancel: cancel, done: make(chan error, 1)}
 
 	go func() {
-		wg.Wait()
-		err := cmd.Wait()
-		cp.done <- err
+		cp.done <- streamCmd(cmd, logFn)
 		close(cp.done)
 	}()
 
-	return cp, nil
+	return cp
 }
 
 // Wait blocks until the crawl finishes.
@@ -151,7 +130,7 @@ func (c *CrawlProcess) Stop() {
 	})
 }
 
-// QuitCrawlers stops any running webrecorder containers.
+// QuitCrawlers stops any running crawler container.
 func QuitCrawlers() (string, error) {
 	running, err := IsCrawlRunning()
 	if err != nil {
@@ -166,41 +145,36 @@ func QuitCrawlers() (string, error) {
 	return "Successfully quit Browsertrix Crawler.", nil
 }
 
-// StartServer starts the local preview Apache server.
+// StartServer serves the crawls directory over HTTP on port 80.
 func StartServer(rootDir string) error {
-	compose := filepath.Join(rootDir, "resources", "docker-compose.yml")
-	cmd := exec.Command("docker", "compose", "-f", compose, "up", "-d")
-	cmd.Dir = rootDir
-	out, err := cmd.CombinedOutput()
+	crawls := filepath.Join(rootDir, "crawls")
+	if err := os.MkdirAll(crawls, 0o777); err != nil {
+		return err
+	}
+	_ = exec.Command("docker", "rm", "-f", PreviewContainerName).Run()
+	out, err := exec.Command("docker", "run", "-d",
+		"--name", PreviewContainerName,
+		"--restart", "unless-stopped",
+		"-p", "80:80",
+		"-v", crawls+":/usr/local/apache2/htdocs",
+		"httpd",
+	).CombinedOutput()
 	if err != nil {
-		// Fall back to docker-compose binary
-		cmd = exec.Command("docker-compose", "-f", compose, "up", "-d")
-		cmd.Dir = rootDir
-		out2, err2 := cmd.CombinedOutput()
-		if err2 != nil {
-			return fmt.Errorf("start server: %v (%s)", err, strings.TrimSpace(string(out)+" "+string(out2)))
-		}
+		return fmt.Errorf("start server: %s", strings.TrimSpace(string(out)))
 	}
 	return nil
 }
 
-// StopServer stops the local preview Apache server.
-func StopServer(rootDir string) error {
-	compose := filepath.Join(rootDir, "resources", "docker-compose.yml")
-	cmd := exec.Command("docker", "compose", "-f", compose, "down")
-	cmd.Dir = rootDir
-	out, err := cmd.CombinedOutput()
+// StopServer stops the local preview server.
+func StopServer() error {
+	out, err := exec.Command("docker", "rm", "-f", PreviewContainerName).CombinedOutput()
 	if err != nil {
-		cmd = exec.Command("docker-compose", "-f", compose, "down")
-		cmd.Dir = rootDir
-		out2, err2 := cmd.CombinedOutput()
-		if err2 != nil {
-			return fmt.Errorf("stop server: %v (%s)", err, strings.TrimSpace(string(out)+" "+string(out2)))
-		}
+		return fmt.Errorf("stop server: %s", strings.TrimSpace(string(out)))
 	}
 	return nil
 }
 
+// streamCmd runs cmd, forwarding each line of stdout and stderr to logFn.
 func streamCmd(cmd *exec.Cmd, logFn func(string)) error {
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -215,22 +189,19 @@ func streamCmd(cmd *exec.Cmd, logFn func(string)) error {
 	}
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		scanLines(stdout, logFn)
-	}()
-	go func() {
-		defer wg.Done()
-		scanLines(stderr, logFn)
-	}()
+	for _, r := range []io.Reader{stdout, stderr} {
+		go func() {
+			defer wg.Done()
+			scanLines(r, logFn)
+		}()
+	}
 	wg.Wait()
 	return cmd.Wait()
 }
 
 func scanLines(r io.Reader, logFn func(string)) {
 	scanner := bufio.NewScanner(r)
-	buf := make([]byte, 0, 64*1024)
-	scanner.Buffer(buf, 1024*1024)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for scanner.Scan() {
 		logFn(scanner.Text())
 	}

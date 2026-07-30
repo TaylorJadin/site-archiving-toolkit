@@ -26,7 +26,11 @@ Example archives:
 ## Requirements
 
 - [Docker](https://www.docker.com/) (Docker Desktop on macOS/Windows)
-- A release binary, or [Go 1.24+](https://go.dev/dl/) to build from source
+- A release binary, or [Go 1.25+](https://go.dev/dl/) to build from source
+
+The binary is self-contained: the crawler image and its helper scripts are built
+into it. Archives (`crawls/`), settings (`.env`) and session state all live in
+the directory you run `archive` from.
 
 ## How do I use it?
 
@@ -53,7 +57,12 @@ While a crawl is running:
 
 If the last session did not finish, `./archive` offers **resume** (`r` on the input screen, or `./archive resume`).
 
-Set `background_mode_default=TRUE` in `.env` to start new crawls detached automatically.
+Start a crawl detached and return to the shell right away with `--background`, or
+set `background_mode_default=TRUE` in `.env` to make that the default.
+
+```bash
+./archive --background https://example.com
+```
 
 Stop a runaway crawl from another terminal:
 
@@ -99,16 +108,23 @@ go build -o archive ./cmd/archive
 | Command | Description |
 | --- | --- |
 | `archive` | Launch the interactive TUI |
+| `archive <url> [url...]` | Start crawling the given URL(s) immediately |
+| `archive --background <url>` | Start a crawl detached and exit |
+| `archive resume` | Resume the last incomplete session |
 | `archive quit` | Stop any running Browsertrix crawl |
 | `archive server start` | Start the local preview server |
 | `archive server stop` | Stop the local preview server |
 | `archive help` | Show help |
 
+When output is piped or redirected, `archive <url>` skips the TUI and streams the
+crawl log to stdout instead.
+
 ### Configuration
 
-On first run a `.env` file is created from `resources/env.example`. Useful options:
+On first run a `.env` file is created with the defaults. Useful options:
 
 - `browsertrix_parameters` — extra flags for Browsertrix Crawler
 - `create_webrecorder_zip` — zip each archive for download (`TRUE`/`FALSE`)
 - `browsertrix_redirect_template` — include Apache redirect helpers
 - `skip_existing_crawls` — skip URLs that already have a completed crawl
+- `background_mode_default` — start new crawls detached

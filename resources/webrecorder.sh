@@ -5,11 +5,7 @@ url=$1
 normalized_url=$2
 now=$3
 
-if [ -f /archive.ini ]; then
-	# shellcheck disable=SC1091
-	source /archive.ini
-fi
-
+# Crawl options are passed in as environment variables by the archive binary.
 : "${browsertrix_parameters:=--workers 4 --text}"
 : "${browsertrix_redirect_template:=FALSE}"
 : "${create_webrecorder_zip:=TRUE}"
@@ -21,13 +17,13 @@ crawl --url "$url" --generateWACZ $browsertrix_parameters --collection archive |
 
 # Clean up webrecorder stuff we don't need
 mv /crawls/collections/archive/archive.wacz "/output/webrecorder/${normalized_url}-${now}.wacz"
-rm -rf collections proxy-certs static templates
+rm -rf /crawls/collections /crawls/proxy-certs /crawls/static /crawls/templates
 
 # Set up webrecorder to publish
 cd /output/webrecorder
 wget -q https://cdn.jsdelivr.net/npm/replaywebpage/ui.js https://cdn.jsdelivr.net/npm/replaywebpage/sw.js
 mkdir -p replay
-mv *.js replay/
+mv ./*.js replay/
 cp /index.html index.html
 if [ "$browsertrix_redirect_template" = TRUE ]; then
 	cp /redirect.php redirect.php

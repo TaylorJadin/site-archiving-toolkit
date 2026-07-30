@@ -2,58 +2,69 @@ package archive
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"syscall"
 	"time"
-
-	"github.com/TaylorJadin/site-archiving-toolkit/internal/config"
 )
 
-// StartSessionRunner launches a detached archive session-run subprocess.
-func StartSessionRunner(rootDir string, session *Session) (int, error) {
+const pollInterval = 200 * time.Millisecond
+
+// StartSessionRunner validates the session, persists it, and launches a
+// detached "archive session-run" subprocess to crawl it.
+func StartSessionRunner(rootDir string, session *Session) error {
 	if session == nil || len(session.Jobs) == 0 {
-		return 0, fmt.Errorf("empty session")
+		return errors.New("no URLs to archive")
 	}
+	for _, j := range session.Jobs {
+		if !ValidURL(j.URL) {
+			return fmt.Errorf("URL must start with http:// or https://: %s", j.URL)
+		}
+	}
+	if err := DockerAvailable(); err != nil {
+		return err
+	}
+	if ActiveSession(rootDir) != nil {
+		return errors.New("a crawl is already running; reattach with archive, or stop it with archive quit")
+	}
+
 	if err := os.MkdirAll(filepath.Join(rootDir, "crawls"), 0o777); err != nil {
-		return 0, err
+		return err
 	}
-	_, logPath, _ := SessionPaths(rootDir)
-	if err := os.WriteFile(logPath, nil, 0o644); err != nil && !os.IsNotExist(err) {
-		return 0, err
+	if err := os.WriteFile(sessionLogPath(rootDir), nil, 0o644); err != nil {
+		return err
 	}
 	session.PID = 0
-	session.Detached = false
 	if err := SaveSession(rootDir, session); err != nil {
-		return 0, err
+		return err
 	}
 
 	exe, err := os.Executable()
 	if err != nil {
-		return 0, err
+		return err
 	}
 	cmd := exec.Command(exe, "session-run")
 	cmd.Dir = rootDir
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
-	cmd.Stdout = nil
-	cmd.Stderr = nil
-	cmd.Stdin = nil
 	if err := cmd.Start(); err != nil {
-		return 0, err
-	}
-	session.PID = cmd.Process.Pid
-	if err := SaveSession(rootDir, session); err != nil {
-		return 0, err
+		return err
 	}
 	go func() { _ = cmd.Wait() }()
-	return cmd.Process.Pid, nil
+
+	// RunSession records the same PID from inside the child, so whichever write
+	// lands last, the session ends up pointing at the runner process.
+	session.PID = cmd.Process.Pid
+	return SaveSession(rootDir, session)
 }
 
-// RunSession executes the crawl session in the foreground (session-run command).
+// RunSession crawls the persisted session in the foreground. It backs the
+// "archive session-run" subcommand, which StartSessionRunner spawns.
 func RunSession(rootDir string) error {
-	cfg, err := config.Load(rootDir)
+	cfg, err := LoadConfig(rootDir)
 	if err != nil {
 		return err
 	}
@@ -62,52 +73,43 @@ func RunSession(rootDir string) error {
 		return err
 	}
 	if session == nil || len(session.Jobs) == 0 {
-		return fmt.Errorf("no session to run")
+		return errors.New("no session to run")
+	}
+	session.PID = os.Getpid()
+	if err := SaveSession(rootDir, session); err != nil {
+		return err
 	}
 
-	orch := NewOrchestratorFromSession(cfg, session)
+	orch := NewOrchestrator(cfg, session)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	go watchControl(ctx, rootDir, orch, cancel)
+	go orch.Run(ctx)
 
-	go watchSessionControl(ctx, rootDir, orch, cancel)
-
-	eventsDone := make(chan struct{})
-	go func() {
-		defer close(eventsDone)
-		for ev := range orch.Events {
-			session.ApplyEvent(ev)
-			if ev.Type == EventLog {
-				_ = AppendSessionLog(rootDir, ev.Line)
-			}
-			_ = SaveSession(rootDir, session)
+	for ev := range orch.Events {
+		session.ApplyEvent(ev)
+		if ev.Type == EventLog {
+			_ = AppendSessionLog(rootDir, ev.Line)
 		}
-	}()
-
-	orch.Run(ctx)
-	cancel()
-	<-eventsDone
-
-	session.PID = 0
-	if !session.Complete {
-		session.Resumable = len(session.ResumableURLs()) > 0
+		_ = SaveSession(rootDir, session)
 	}
-	_ = SaveSession(rootDir, session)
-	return nil
+
+	// The runner is exiting, so nothing can advance this session any further.
+	session.PID = 0
+	session.Complete = true
+	return SaveSession(rootDir, session)
 }
 
-func watchSessionControl(ctx context.Context, rootDir string, orch *Orchestrator, cancel context.CancelFunc) {
-	ticker := time.NewTicker(200 * time.Millisecond)
+// watchControl relays skip/cancel commands sent by other archive processes.
+func watchControl(ctx context.Context, rootDir string, orch *Orchestrator, cancel context.CancelFunc) {
+	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			cmd, err := ConsumeControl(rootDir)
-			if err != nil || cmd == "" {
-				continue
-			}
-			switch cmd {
+			switch cmd, _ := ConsumeControl(rootDir); cmd {
 			case "skip":
 				orch.SkipCurrent()
 			case "cancel":
@@ -115,6 +117,39 @@ func watchSessionControl(ctx context.Context, rootDir string, orch *Orchestrator
 				cancel()
 				return
 			}
+		}
+	}
+}
+
+// RunHeadless starts a crawl session and streams its log to w until it finishes.
+func RunHeadless(rootDir string, urls []string, w io.Writer) error {
+	if err := StartSessionRunner(rootDir, NewSession(urls)); err != nil {
+		return err
+	}
+
+	offset := 0
+	for {
+		time.Sleep(pollInterval)
+
+		if logText, err := ReadSessionLog(rootDir); err == nil && len(logText) > offset {
+			if _, err := io.WriteString(w, logText[offset:]); err != nil {
+				return err
+			}
+			offset = len(logText)
+		}
+
+		session, err := LoadSession(rootDir)
+		switch {
+		case err != nil:
+			return err
+		case session == nil:
+			return errors.New("session file disappeared")
+		case session.Phase == SessionPhaseError:
+			return errors.New(session.Error)
+		case session.Complete:
+			return nil
+		case session.RunnerStopped():
+			return errors.New("crawl runner stopped unexpectedly")
 		}
 	}
 }
