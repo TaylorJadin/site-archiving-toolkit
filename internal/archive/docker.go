@@ -130,8 +130,16 @@ func (c *CrawlProcess) Stop() {
 	})
 }
 
-// QuitCrawlers stops any running crawler container.
-func QuitCrawlers() (string, error) {
+// QuitCrawlers stops the current crawl. An active session runner is asked to
+// cancel so it abandons the rest of its queue; a container left behind without
+// a runner is stopped directly.
+func QuitCrawlers(rootDir string) (string, error) {
+	if ActiveSession(rootDir) != nil {
+		if err := SendControl(rootDir, "cancel"); err != nil {
+			return "", err
+		}
+		return "Stopping Browsertrix Crawler.", nil
+	}
 	running, err := IsCrawlRunning()
 	if err != nil {
 		return "", err

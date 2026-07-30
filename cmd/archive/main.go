@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/mattn/go-isatty"
 
@@ -29,7 +30,7 @@ func run(args []string) error {
 	if len(args) > 0 {
 		switch args[0] {
 		case "quit", "quit-crawlers":
-			msg, err := archive.QuitCrawlers()
+			msg, err := archive.QuitCrawlers(root)
 			if err != nil {
 				return err
 			}
@@ -47,18 +48,16 @@ func run(args []string) error {
 		}
 	}
 
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") && !archive.ValidURL(args[0]) {
+		return fmt.Errorf("unknown command %q; URLs must start with http:// or https:// (see archive help)", args[0])
+	}
+
 	urls, background := archive.CollectURLsFromArgs(args)
 	stdinURLs, err := archive.CollectURLsFromStdin()
 	if err != nil {
 		return fmt.Errorf("read URLs from stdin: %w", err)
 	}
-	urls = append(urls, stdinURLs...)
-
-	if len(urls) == 0 && len(args) > 0 {
-		fmt.Fprintf(os.Stderr, "unknown command: %s\n\n%s", args[0], usage)
-		return errors.New("no URLs given")
-	}
-	return start(root, urls, background)
+	return start(root, append(urls, stdinURLs...), background)
 }
 
 // start archives urls, choosing between the TUI, a detached runner, and
