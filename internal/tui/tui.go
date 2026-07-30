@@ -158,8 +158,7 @@ func New(cfg *archive.Config, urls []string) Model {
 			spinner.WithSpinner(spinner.Dot),
 			spinner.WithStyle(lipgloss.NewStyle().Foreground(colSeaBright)),
 		),
-		statusLabel: "Ready",
-		currentIdx:  -1,
+		currentIdx: -1,
 	}
 
 	switch {
@@ -226,7 +225,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "enter":
 				return m.startArchive()
 			case "r", "R":
-				if m.canResume {
+				// Only a resume shortcut while the box is empty, so URLs
+				// containing an r can still be typed.
+				if m.canResume && strings.TrimSpace(m.textarea.Value()) == "" {
 					return m.resumeLastSession()
 				}
 			}

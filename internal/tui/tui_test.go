@@ -202,6 +202,34 @@ func TestDetachPrintsFarewell(t *testing.T) {
 	}
 }
 
+// r resumes only when nothing has been typed, so URLs containing an r are not
+// swallowed by the shortcut.
+func TestResumeShortcutOnlyWhenInputIsEmpty(t *testing.T) {
+	dir := t.TempDir()
+	// The URL is deliberately invalid: the session still counts as resumable,
+	// but a regression here cannot reach Docker and start a real crawl.
+	session := archive.NewSession([]string{"ftp://a.com"})
+	session.Complete = true
+	if err := archive.SaveSession(dir, session); err != nil {
+		t.Fatal(err)
+	}
+
+	m := New(&archive.Config{RootDir: dir}, nil)
+	if !m.canResume {
+		t.Fatal("expected the unfinished session to be resumable")
+	}
+
+	typed, _ := m.Update(tea.KeyPressMsg{Code: 'h', Text: "h"})
+	typed, _ = typed.(Model).Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
+	got := typed.(Model)
+	if got.phase != phaseInput {
+		t.Fatalf("phase = %v, want the input screen", got.phase)
+	}
+	if got.textarea.Value() != "hr" {
+		t.Fatalf("textarea = %q, want %q", got.textarea.Value(), "hr")
+	}
+}
+
 func TestPasteMultilineURLs(t *testing.T) {
 	m := newTestModel(t)
 	next, _ := m.Update(tea.PasteMsg{Content: "https://a.com\nhttps://b.com\nhttps://c.com"})
