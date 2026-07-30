@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -59,9 +60,13 @@ type Orchestrator struct {
 	// Events is closed when Run returns.
 	Events chan Event
 
-	current  *CrawlProcess
 	skipCh   chan struct{}
 	cancelCh chan struct{}
+
+	// mu guards current, which Run replaces as it works through the queue
+	// while SkipCurrent and CancelAll are called from another goroutine.
+	mu      sync.Mutex
+	current *CrawlProcess
 }
 
 // NewOrchestrator rebuilds an orchestrator from a persisted session.
@@ -94,9 +99,18 @@ func (o *Orchestrator) CancelAll() {
 	o.stopCurrent()
 }
 
+func (o *Orchestrator) setCurrent(p *CrawlProcess) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.current = p
+}
+
 func (o *Orchestrator) stopCurrent() {
-	if o.current != nil {
-		o.current.Stop()
+	o.mu.Lock()
+	current := o.current
+	o.mu.Unlock()
+	if current != nil {
+		current.Stop()
 	}
 }
 
@@ -182,7 +196,7 @@ func (o *Orchestrator) runJob(ctx context.Context, i int, workdir string) bool {
 		Timestamp:     now,
 		Env:           o.cfg.crawlEnv(),
 	}, o.log)
-	o.current = proc
+	o.setCurrent(proc)
 
 	waitCh := make(chan error, 1)
 	go func() { waitCh <- proc.Wait() }()
@@ -202,7 +216,7 @@ func (o *Orchestrator) runJob(ctx context.Context, i int, workdir string) bool {
 		proc.Stop()
 		<-waitCh
 	}
-	o.current = nil
+	o.setCurrent(nil)
 
 	// The container may have exited on its own just as a control arrived.
 	switch {

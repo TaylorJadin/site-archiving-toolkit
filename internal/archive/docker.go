@@ -64,6 +64,9 @@ func BuildImage(ctx context.Context, logFn func(string)) error {
 		return err
 	}
 	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
 		data, err := resources.BuildContext.ReadFile(e.Name())
 		if err != nil {
 			return err
