@@ -1,39 +1,33 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Prep
+# Builds a self-contained archive binary for each supported platform. All the
+# runtime assets are embedded in the binary, so a release is just the binary
+# plus the README.
+
 release_root=releases
 rm -rf "$release_root"
 mkdir -p "$release_root"
 
-build_release() {
-	local goos=$1
-	local goarch=$2
-	local label=$3
-	local ext=$4
+targets=(
+	"linux amd64 Linux"
+	"darwin amd64 macOS-Intel"
+	"darwin arm64 macOS-AppleSilicon"
+	"windows amd64 Windows .exe"
+)
 
-	local dir="$release_root/site-archiving-toolkit"
-	rm -rf "$dir"
-	mkdir -p "$dir"
+for target in "${targets[@]}"; do
+	read -r goos goarch label ext <<<"$target"
+	dir="$release_root/site-archiving-toolkit"
 
-	local bin="archive${ext}"
 	echo "Building ${label} (${goos}/${goarch})..."
-	GOOS="$goos" GOARCH="$goarch" CGO_ENABLED=0 go build -o "$dir/$bin" ./cmd/archive
-
-	cp -r resources "$dir/"
+	mkdir -p "$dir"
+	GOOS="$goos" GOARCH="$goarch" CGO_ENABLED=0 go build -o "$dir/archive${ext:-}" ./cmd/archive
 	cp README.md "$dir/"
 
-	(
-		cd "$release_root"
-		zip -r "${label}-site-archiving-toolkit.zip" site-archiving-toolkit >/dev/null
-	)
+	(cd "$release_root" && zip -qr "${label}-site-archiving-toolkit.zip" site-archiving-toolkit)
 	rm -rf "$dir"
 	echo "Wrote $release_root/${label}-site-archiving-toolkit.zip"
-}
-
-build_release linux amd64 Linux ""
-build_release darwin amd64 macOS-Intel ""
-build_release darwin arm64 macOS-AppleSilicon ""
-build_release windows amd64 Windows ".exe"
+done
 
 echo "Done."

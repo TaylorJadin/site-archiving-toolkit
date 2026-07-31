@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -13,7 +14,6 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/TaylorJadin/site-archiving-toolkit/internal/archive"
-	"github.com/TaylorJadin/site-archiving-toolkit/internal/config"
 )
 
 type phase int
@@ -25,22 +25,21 @@ const (
 	phaseError
 )
 
-type sessionPollMsg struct {
-	session  *archive.Session
-	logChunk string
-}
+const (
+	maxLogLines  = 500
+	pollInterval = 200 * time.Millisecond
+)
 
-// Options configures TUI startup behavior.
-type Options struct {
-	URLs       []string
-	Background bool
-	Resume     bool
+// sessionPollMsg carries the latest session state and any new log output.
+type sessionPollMsg struct {
+	session   *archive.Session
+	logChunk  string
+	logOffset int
 }
 
 // Model is the Bubble Tea TUI model.
 type Model struct {
-	cfg    *config.Config
-	opts   Options
+	cfg    *archive.Config
 	phase  phase
 	width  int
 	height int
@@ -54,18 +53,18 @@ type Model struct {
 	currentURL  string
 	statusLabel string
 	building    bool
+	quitting    bool
 	logs        []string
 	results     []string
 	errMsg      string
+	logOffset   int
 
-	attached   bool
-	detaching  bool
-	logOffset  int
+	// farewell is printed by Run after the program exits.
+	farewell string
+
 	canResume  bool
 	resumeInfo string
 }
-
-const maxLogLines = 500
 
 var (
 	colFoam      = lipgloss.Color("#E8F1F0")
@@ -123,8 +122,10 @@ var (
 			Foreground(colMuted)
 )
 
-// New creates the initial TUI model.
-func New(cfg *config.Config, opts Options) Model {
+// New creates the initial TUI model. When urls is non-empty the crawl starts
+// immediately; otherwise the model either reattaches to a running crawl or
+// shows the URL input.
+func New(cfg *archive.Config, urls []string) Model {
 	ta := textarea.New()
 	ta.Placeholder = "https://example.com https://another-site.org"
 	ta.Focus()
@@ -148,68 +149,70 @@ func New(cfg *config.Config, opts Options) Model {
 	styles.Cursor.Color = colSea
 	ta.SetStyles(styles)
 
-	sp := spinner.New(
-		spinner.WithSpinner(spinner.Dot),
-		spinner.WithStyle(lipgloss.NewStyle().Foreground(colSeaBright)),
-	)
-
-	vp := viewport.New(viewport.WithWidth(72), viewport.WithHeight(12))
-	vp.SetContent("")
-
 	m := Model{
-		cfg:         cfg,
-		opts:        opts,
-		phase:       phaseInput,
-		textarea:    ta,
-		viewport:    vp,
-		spinner:     sp,
-		statusLabel: "Ready",
-		currentIdx:  -1,
+		cfg:      cfg,
+		phase:    phaseInput,
+		textarea: ta,
+		viewport: viewport.New(viewport.WithWidth(72), viewport.WithHeight(12)),
+		spinner: spinner.New(
+			spinner.WithSpinner(spinner.Dot),
+			spinner.WithStyle(lipgloss.NewStyle().Foreground(colSeaBright)),
+		),
+		currentIdx: -1,
 	}
 
-	m.initStartupState()
+	switch {
+	case len(urls) > 0:
+		m.startSession(urls)
+	default:
+		if session := archive.ActiveSession(cfg.RootDir); session != nil {
+			m.attach(session)
+		} else if session, _ := archive.LoadSession(cfg.RootDir); session.CanResume() {
+			m.canResume = true
+			m.resumeInfo = session.ProgressSummary()
+		}
+	}
 	return m
 }
 
-func (m *Model) initStartupState() {
-	if active, session := archive.IsRunnerActive(m.cfg.RootDir); active && session != nil {
-		m.attachToSession(session)
-		return
+// startSession spawns a crawl runner and attaches to it, reporting success.
+func (m *Model) startSession(urls []string) bool {
+	session := archive.NewSession(urls)
+	if err := archive.StartSessionRunner(m.cfg.RootDir, session); err != nil {
+		m.errMsg = err.Error()
+		return false
 	}
+	m.attach(session)
+	return true
+}
 
-	if m.opts.Resume {
-		if session, _ := archive.LoadSession(m.cfg.RootDir); session != nil && session.CanResume() {
-			m.startSession(session.ResumableURLs(), m.opts.Background)
-			return
-		}
-	}
-
-	if len(m.opts.URLs) > 0 {
-		bg := m.opts.Background || m.cfg.BackgroundModeDefault
-		m.startSession(m.opts.URLs, bg)
-		return
-	}
-
-	if session, _ := archive.LoadSession(m.cfg.RootDir); session != nil && session.CanResume() {
-		m.canResume = true
-		m.resumeInfo = session.ProgressSummary()
-	}
+func (m *Model) attach(session *archive.Session) {
+	m.phase = phaseRunning
+	m.errMsg = ""
+	m.results = nil
+	m.logs = nil
+	m.logOffset = 0
+	m.sync(session)
 }
 
 // Init implements tea.Model.
 func (m Model) Init() tea.Cmd {
 	if m.phase == phaseRunning {
-		return tea.Batch(textarea.Blink, m.spinner.Tick, pollSession(m.cfg.RootDir, 0))
+		return m.watch()
 	}
 	return textarea.Blink
+}
+
+// watch drives the spinner and the session poll loop.
+func (m Model) watch() tea.Cmd {
+	return tea.Batch(m.spinner.Tick, pollSession(m.cfg.RootDir, m.logOffset))
 }
 
 // Update implements tea.Model.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
+		m.width, m.height = msg.Width, msg.Height
 		m.resize()
 		return m, nil
 
@@ -222,14 +225,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "enter":
 				return m.startArchive()
 			case "r", "R":
-				if m.canResume {
+				// Only a resume shortcut while the box is empty, so URLs
+				// containing an r can still be typed.
+				if m.canResume && strings.TrimSpace(m.textarea.Value()) == "" {
 					return m.resumeLastSession()
 				}
 			}
-			var cmd tea.Cmd
-			m.textarea, cmd = m.textarea.Update(msg)
-			return m, cmd
-
 		case phaseRunning:
 			switch msg.String() {
 			case "s", "S":
@@ -239,57 +240,44 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			case "d", "D":
-				return m.detachSession()
+				m.farewell = "Detached — crawl continues in background. Run archive to reattach."
+				return m, tea.Quit
 			case "q", "Q", "ctrl+c", "esc":
 				return m.cancelSession()
 			}
-			var cmd tea.Cmd
-			m.viewport, cmd = m.viewport.Update(msg)
-			return m, cmd
-
 		case phaseDone, phaseError:
 			switch msg.String() {
 			case "q", "esc", "ctrl+c", "enter":
 				return m, tea.Quit
-			case "r":
-				w, h := m.width, m.height
-				m = New(m.cfg, Options{})
-				m.width, m.height = w, h
-				m.resize()
-				return m, textarea.Blink
+			case "r", "R":
+				next := New(m.cfg, nil)
+				next.width, next.height = m.width, m.height
+				next.resize()
+				return next, next.Init()
 			}
 		}
 
-	case tea.PasteMsg:
-		if m.phase == phaseInput {
-			var cmd tea.Cmd
-			m.textarea, cmd = m.textarea.Update(msg)
-			return m, cmd
-		}
+	case sessionPollMsg:
+		return m.applyPoll(msg)
 
 	case spinner.TickMsg:
-		if m.phase == phaseRunning {
-			var cmd tea.Cmd
-			m.spinner, cmd = m.spinner.Update(msg)
-			return m, tea.Batch(cmd, pollSession(m.cfg.RootDir, m.logOffset))
+		if m.phase != phaseRunning {
+			return m, nil
 		}
-
-	case sessionPollMsg:
-		return m.applySessionPoll(msg)
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
 	}
 
-	if m.phase == phaseInput {
-		var cmd tea.Cmd
+	// Anything else (text input, paste, scroll) goes to the focused component.
+	var cmd tea.Cmd
+	switch m.phase {
+	case phaseInput:
 		m.textarea, cmd = m.textarea.Update(msg)
-		return m, cmd
-	}
-	if m.phase == phaseRunning {
-		var cmd tea.Cmd
+	case phaseRunning:
 		m.viewport, cmd = m.viewport.Update(msg)
-		return m, cmd
 	}
-
-	return m, nil
+	return m, cmd
 }
 
 func (m Model) startArchive() (Model, tea.Cmd) {
@@ -298,104 +286,102 @@ func (m Model) startArchive() (Model, tea.Cmd) {
 		m.errMsg = "Enter at least one URL"
 		return m, nil
 	}
-	bg := m.cfg.BackgroundModeDefault
-	return m.startSession(urls, bg)
+	return m.start(urls)
 }
 
 func (m Model) resumeLastSession() (Model, tea.Cmd) {
 	session, err := archive.LoadSession(m.cfg.RootDir)
-	if err != nil || session == nil || !session.CanResume() {
+	if err != nil || !session.CanResume() {
 		m.errMsg = "No session to resume"
+		m.canResume = false
 		return m, nil
 	}
-	return m.startSession(session.ResumableURLs(), m.cfg.BackgroundModeDefault)
+	return m.start(session.ResumableURLs())
 }
 
-func (m Model) startSession(urls []string, background bool) (Model, tea.Cmd) {
-	session := archive.NewSession(urls)
-	if _, err := archive.StartSessionRunner(m.cfg.RootDir, session); err != nil {
-		m.errMsg = err.Error()
+func (m Model) start(urls []string) (Model, tea.Cmd) {
+	if !m.startSession(urls) {
 		return m, nil
 	}
-
-	if background {
-		fmt.Printf("Crawl started in background (%d URLs). Run archive to reattach.\n", len(urls))
+	if m.cfg.BackgroundModeDefault {
+		m.farewell = fmt.Sprintf("Crawl started in background (%d URLs). Run archive to reattach.", m.total)
 		return m, tea.Quit
 	}
-
-	m.attachToSession(session)
-	return m, tea.Batch(m.spinner.Tick, pollSession(m.cfg.RootDir, 0))
+	return m, m.watch()
 }
 
-func (m *Model) attachToSession(session *archive.Session) {
-	m.attached = true
-	m.phase = phaseRunning
-	m.building = session.Phase == archive.SessionPhaseBuilding
-	m.total = len(session.Jobs)
-	m.currentIdx = session.CurrentIndex
-	m.errMsg = ""
-	m.results = nil
-	m.logs = nil
-	m.logOffset = 0
-
-	if logText, err := archive.ReadSessionLog(m.cfg.RootDir); err == nil && logText != "" {
-		m.syncLogs(logText)
+func (m Model) cancelSession() (Model, tea.Cmd) {
+	if m.quitting {
+		// Second press: stop waiting for the runner to wind down.
+		return m, tea.Quit
 	}
-	m.syncFromSession(session)
+	_ = archive.SendControl(m.cfg.RootDir, "cancel")
+	m.quitting = true
+	m.statusLabel = "Quitting..."
+	return m, nil
 }
 
-func (m Model) applySessionPoll(msg sessionPollMsg) (Model, tea.Cmd) {
+func (m Model) applyPoll(msg sessionPollMsg) (Model, tea.Cmd) {
 	if m.phase != phaseRunning {
 		return m, nil
 	}
-	if msg.logChunk != "" {
-		m.syncLogs(msg.logChunk)
+	m.appendLogs(msg.logChunk)
+	m.logOffset = msg.logOffset
+
+	session := msg.session
+	if session == nil {
+		// The session file is missing or unreadable; try again next tick.
+		return m, pollSession(m.cfg.RootDir, m.logOffset)
 	}
-	if msg.session != nil {
-		m.syncFromSession(msg.session)
-		if msg.session.Complete {
-			if msg.session.Phase == archive.SessionPhaseError {
-				m.phase = phaseError
-				m.errMsg = msg.session.Error
-			} else {
-				m.phase = phaseDone
-				m.statusLabel = "Complete"
-			}
-			m.rebuildResults(msg.session)
-			return m, nil
-		}
+	m.sync(session)
+
+	switch {
+	case session.Phase == archive.SessionPhaseError:
+		m.phase = phaseError
+		m.errMsg = session.Error
+	case session.Complete:
+		m.phase = phaseDone
+	case session.RunnerStopped():
+		m.phase = phaseError
+		m.errMsg = "crawl runner stopped unexpectedly"
+	default:
+		return m, pollSession(m.cfg.RootDir, m.logOffset)
 	}
-	return m, tea.Batch(m.spinner.Tick, pollSession(m.cfg.RootDir, m.logOffset))
+
+	m.rebuildResults(session)
+	return m, nil
 }
 
-func (m *Model) syncFromSession(session *archive.Session) {
-	if session == nil {
-		return
-	}
+func (m *Model) sync(session *archive.Session) {
 	m.total = len(session.Jobs)
 	m.currentIdx = session.CurrentIndex
 	m.building = session.Phase == archive.SessionPhaseBuilding
-	switch session.Phase {
-	case archive.SessionPhaseBuilding:
-		m.statusLabel = "Building image..."
-	case archive.SessionPhaseCrawling:
-		m.statusLabel = "Crawling"
-	case archive.SessionPhaseDone:
-		m.statusLabel = "Complete"
-	case archive.SessionPhaseCancelled:
-		m.statusLabel = "Cancelled"
-	case archive.SessionPhaseError:
-		m.statusLabel = "Error"
+	if m.quitting && !session.Complete {
+		m.statusLabel = "Quitting..."
+	} else {
+		m.statusLabel = phaseLabel(session.Phase)
 	}
 	if session.CurrentIndex >= 0 && session.CurrentIndex < len(session.Jobs) {
 		m.currentURL = session.Jobs[session.CurrentIndex].URL
 	}
 }
 
-func (m *Model) rebuildResults(session *archive.Session) {
-	if session == nil {
-		return
+func phaseLabel(p archive.SessionPhase) string {
+	switch p {
+	case archive.SessionPhaseBuilding:
+		return "Building image..."
+	case archive.SessionPhaseCrawling:
+		return "Crawling"
+	case archive.SessionPhaseCancelled:
+		return "Cancelled"
+	case archive.SessionPhaseError:
+		return "Error"
+	default:
+		return "Complete"
 	}
+}
+
+func (m *Model) rebuildResults(session *archive.Session) {
 	m.results = nil
 	for _, job := range session.Jobs {
 		if job.Status == archive.StatusPending || job.Status == archive.StatusRunning {
@@ -405,56 +391,37 @@ func (m *Model) rebuildResults(session *archive.Session) {
 	}
 }
 
-func (m *Model) syncLogs(full string) {
-	if full == "" {
+func (m *Model) appendLogs(chunk string) {
+	if chunk == "" {
 		return
 	}
-	if len(full) <= m.logOffset {
-		return
+	for _, line := range strings.Split(strings.TrimSuffix(chunk, "\n"), "\n") {
+		m.logs = append(m.logs, line)
 	}
-	chunk := full[m.logOffset:]
-	m.logOffset = len(full)
-	for _, line := range strings.Split(chunk, "\n") {
-		if line == "" {
-			continue
-		}
-		m.appendLog(line)
+	if len(m.logs) > maxLogLines {
+		m.logs = m.logs[len(m.logs)-maxLogLines:]
 	}
+	m.viewport.SetContent(strings.Join(m.logs, "\n"))
+	m.viewport.GotoBottom()
 }
 
-func (m Model) cancelSession() (Model, tea.Cmd) {
-	if m.detaching {
-		return m, tea.Quit
-	}
-	_ = archive.SendControl(m.cfg.RootDir, "cancel")
-	m.statusLabel = "Quitting..."
-	return m, pollSession(m.cfg.RootDir, m.logOffset)
-}
-
-func (m Model) detachSession() (Model, tea.Cmd) {
-	if m.phase != phaseRunning {
-		return m, tea.Quit
-	}
-	m.detaching = true
-	if session, _ := archive.LoadSession(m.cfg.RootDir); session != nil {
-		session.Detached = true
-		_ = archive.SaveSession(m.cfg.RootDir, session)
-	}
-	fmt.Println("Detached — crawl continues in background. Run archive to reattach.")
-	return m, tea.Quit
-}
-
+// pollSession reloads the session and any log output written since offset.
+// Only whole lines are consumed so a partially written line is never split.
 func pollSession(rootDir string, offset int) tea.Cmd {
-	return func() tea.Msg {
-		time.Sleep(200 * time.Millisecond)
+	return tea.Tick(pollInterval, func(time.Time) tea.Msg {
 		session, _ := archive.LoadSession(rootDir)
 		logText, _ := archive.ReadSessionLog(rootDir)
-		chunk := ""
+
+		msg := sessionPollMsg{session: session, logOffset: offset}
 		if len(logText) > offset {
-			chunk = logText[offset:]
+			chunk := logText[offset:]
+			if end := strings.LastIndexByte(chunk, '\n'); end >= 0 {
+				msg.logChunk = chunk[:end+1]
+				msg.logOffset = offset + end + 1
+			}
 		}
-		return sessionPollMsg{session: session, logChunk: chunk}
-	}
+		return msg
+	})
 }
 
 func statusGlyph(s archive.CrawlStatus) string {
@@ -472,61 +439,36 @@ func statusGlyph(s archive.CrawlStatus) string {
 	}
 }
 
-func (m *Model) appendLog(line string) {
-	m.logs = append(m.logs, line)
-	if len(m.logs) > maxLogLines {
-		m.logs = m.logs[len(m.logs)-maxLogLines:]
-	}
-	m.viewport.SetContent(strings.Join(m.logs, "\n"))
-	m.viewport.GotoBottom()
-}
-
 func (m *Model) resize() {
-	inputW := m.width - 4
-	if inputW < 40 {
-		inputW = 40
-	}
-	if inputW > 100 {
-		inputW = 100
-	}
-	m.textarea.SetWidth(inputW)
-
-	logW := m.width
-	if logW < 40 {
-		logW = 40
-	}
-	logH := m.height - 12
-	if logH < 6 {
-		logH = 6
-	}
-	m.viewport.SetWidth(logW)
-	m.viewport.SetHeight(logH)
+	m.textarea.SetWidth(clamp(m.width-4, 40, 100))
+	m.viewport.SetWidth(max(m.width, 40))
+	m.viewport.SetHeight(max(m.height-12, 6))
 }
 
-func (m Model) content() string {
-	switch m.phase {
-	case phaseInput:
-		return m.viewInput()
-	case phaseRunning:
-		return m.viewRunning()
-	case phaseDone:
-		return m.viewDone()
-	case phaseError:
-		return m.viewError()
-	default:
-		return ""
-	}
-}
+func clamp(v, lo, hi int) int { return min(max(v, lo), hi) }
 
 // View implements tea.Model.
 func (m Model) View() tea.View {
-	return tea.NewView(m.content())
+	switch m.phase {
+	case phaseRunning:
+		return tea.NewView(m.viewRunning())
+	case phaseDone:
+		return tea.NewView(m.viewDone())
+	case phaseError:
+		return tea.NewView(m.viewError())
+	default:
+		return tea.NewView(m.viewInput())
+	}
+}
+
+func header(b *strings.Builder) {
+	b.WriteString(titleStyle.Render("Site Archiving Toolkit"))
+	b.WriteString("\n")
 }
 
 func (m Model) viewInput() string {
 	var b strings.Builder
-	b.WriteString(titleStyle.Render("Site Archiving Toolkit"))
-	b.WriteString("\n")
+	header(&b)
 	b.WriteString(subtitleStyle.Render("Enter URL(s) to crawl (multiple URLs can be separated by a space or new line)"))
 	b.WriteString("\n\n")
 	b.WriteString(m.textarea.View())
@@ -549,17 +491,15 @@ func (m Model) viewInput() string {
 
 func (m Model) viewRunning() string {
 	var b strings.Builder
-	b.WriteString(titleStyle.Render("Site Archiving Toolkit"))
-	b.WriteString("\n")
+	header(&b)
 
-	spin := m.spinner.View()
 	progress := ""
 	if m.building {
 		progress = progressStyle.Render("Building image…")
 	} else if m.total > 0 && m.currentIdx >= 0 {
 		progress = progressStyle.Render(fmt.Sprintf("Site %d/%d", m.currentIdx+1, m.total))
 	}
-	b.WriteString(fmt.Sprintf("%s %s  %s\n", spin, progress, statusStyle.Render(m.statusLabel)))
+	fmt.Fprintf(&b, "%s %s  %s\n", m.spinner.View(), progress, statusStyle.Render(m.statusLabel))
 	if m.currentURL != "" && !m.building {
 		b.WriteString(subtitleStyle.Render(m.currentURL))
 		b.WriteString("\n")
@@ -568,21 +508,15 @@ func (m Model) viewRunning() string {
 
 	if !m.building {
 		b.WriteString(btnStyle.Render("s skip url"))
-		b.WriteString(btnStyle.Render("d detach"))
-		b.WriteString(btnDangerStyle.Render("q quit"))
+	}
+	b.WriteString(btnStyle.Render("d detach"))
+	b.WriteString(btnDangerStyle.Render("q quit"))
+	if !m.building {
 		b.WriteString(hintStyle.Render("  ↑↓ scroll logs"))
-		b.WriteString("\n")
-	} else {
-		b.WriteString(btnStyle.Render("d detach"))
-		b.WriteString(btnDangerStyle.Render("q quit"))
-		b.WriteString("\n")
 	}
+	b.WriteString("\n")
 
-	ruleW := m.viewport.Width()
-	if ruleW < 1 {
-		ruleW = 40
-	}
-	b.WriteString(ruleStyle.Render(strings.Repeat("─", ruleW)))
+	b.WriteString(ruleStyle.Render(strings.Repeat("─", max(m.viewport.Width(), 40))))
 	b.WriteString("\n")
 	b.WriteString(m.viewport.View())
 	b.WriteString("\n")
@@ -591,8 +525,7 @@ func (m Model) viewRunning() string {
 
 func (m Model) viewDone() string {
 	var b strings.Builder
-	b.WriteString(titleStyle.Render("Site Archiving Toolkit"))
-	b.WriteString("\n")
+	header(&b)
 	b.WriteString(okStyle.Render("Archive run finished"))
 	b.WriteString("\n\n")
 	if len(m.results) > 0 {
@@ -606,8 +539,7 @@ func (m Model) viewDone() string {
 
 func (m Model) viewError() string {
 	var b strings.Builder
-	b.WriteString(titleStyle.Render("Site Archiving Toolkit"))
-	b.WriteString("\n")
+	header(&b)
 	b.WriteString(errorStyle.Render("Error"))
 	b.WriteString("\n\n")
 	b.WriteString(boxStyle.Render(m.errMsg))
@@ -617,9 +549,21 @@ func (m Model) viewError() string {
 	return b.String()
 }
 
-// Run starts the Bubble Tea program.
-func Run(cfg *config.Config, opts Options) error {
-	p := tea.NewProgram(New(cfg, opts))
-	_, err := p.Run()
-	return err
+// Run starts the Bubble Tea program. When urls is non-empty the crawl starts
+// right away, otherwise the TUI opens on the URL input (or reattaches to a
+// crawl that is already running).
+func Run(cfg *archive.Config, urls []string) error {
+	m := New(cfg, urls)
+	if len(urls) > 0 && m.phase != phaseRunning {
+		return errors.New(m.errMsg)
+	}
+
+	final, err := tea.NewProgram(m).Run()
+	if err != nil {
+		return err
+	}
+	if fm, ok := final.(Model); ok && fm.farewell != "" {
+		fmt.Println(fm.farewell)
+	}
+	return nil
 }

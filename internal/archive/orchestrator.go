@@ -6,9 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
-
-	"github.com/TaylorJadin/site-archiving-toolkit/internal/config"
 )
 
 // CrawlStatus is the outcome of a single URL crawl.
@@ -31,7 +30,7 @@ type Job struct {
 	Message       string
 }
 
-// EventType identifies orchestrator events sent to the TUI.
+// EventType identifies orchestrator events.
 type EventType int
 
 const (
@@ -44,12 +43,10 @@ const (
 	EventError
 )
 
-// Event is a message from the crawler to the UI.
+// Event is a progress message from the orchestrator.
 type Event struct {
 	Type    EventType
 	Index   int
-	Total   int
-	URL     string
 	Status  CrawlStatus
 	Message string
 	Line    string
@@ -57,40 +54,23 @@ type Event struct {
 
 // Orchestrator runs a queue of crawl jobs.
 type Orchestrator struct {
-	Cfg    *config.Config
-	Jobs   []Job
+	cfg  *Config
+	Jobs []Job
+
+	// Events is closed when Run returns.
 	Events chan Event
 
-	current  *CrawlProcess
 	skipCh   chan struct{}
 	cancelCh chan struct{}
+
+	// mu guards current, which Run replaces as it works through the queue
+	// while SkipCurrent and CancelAll are called from another goroutine.
+	mu      sync.Mutex
+	current *CrawlProcess
 }
 
-// NewOrchestrator creates an orchestrator for the given URLs.
-func NewOrchestrator(cfg *config.Config, urls []string) *Orchestrator {
-	jobs := make([]Job, 0, len(urls))
-	for _, u := range urls {
-		u = strings.TrimSpace(u)
-		if u == "" {
-			continue
-		}
-		jobs = append(jobs, Job{
-			URL:           u,
-			NormalizedURL: NormalizeURL(u),
-			Status:        StatusPending,
-		})
-	}
-	return &Orchestrator{
-		Cfg:      cfg,
-		Jobs:     jobs,
-		Events:   make(chan Event, 256),
-		skipCh:   make(chan struct{}, 1),
-		cancelCh: make(chan struct{}, 1),
-	}
-}
-
-// NewOrchestratorFromSession rebuilds an orchestrator from a persisted session.
-func NewOrchestratorFromSession(cfg *config.Config, session *Session) *Orchestrator {
+// NewOrchestrator rebuilds an orchestrator from a persisted session.
+func NewOrchestrator(cfg *Config, session *Session) *Orchestrator {
 	jobs := make([]Job, len(session.Jobs))
 	copy(jobs, session.Jobs)
 	for i := range jobs {
@@ -99,7 +79,7 @@ func NewOrchestratorFromSession(cfg *config.Config, session *Session) *Orchestra
 		}
 	}
 	return &Orchestrator{
-		Cfg:      cfg,
+		cfg:      cfg,
 		Jobs:     jobs,
 		Events:   make(chan Event, 256),
 		skipCh:   make(chan struct{}, 1),
@@ -109,283 +89,196 @@ func NewOrchestratorFromSession(cfg *config.Config, session *Session) *Orchestra
 
 // SkipCurrent requests skipping the active crawl.
 func (o *Orchestrator) SkipCurrent() {
-	select {
-	case o.skipCh <- struct{}{}:
-	default:
-	}
+	signal(o.skipCh)
 	o.stopCurrent()
 }
 
 // CancelAll requests cancelling the entire archive run.
 func (o *Orchestrator) CancelAll() {
-	select {
-	case o.cancelCh <- struct{}{}:
-	default:
-	}
+	signal(o.cancelCh)
 	o.stopCurrent()
 }
 
+func (o *Orchestrator) setCurrent(p *CrawlProcess) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.current = p
+}
+
 func (o *Orchestrator) stopCurrent() {
-	if o.current != nil {
-		o.current.Stop()
+	o.mu.Lock()
+	current := o.current
+	o.mu.Unlock()
+	if current != nil {
+		current.Stop()
 	}
 }
 
-func (o *Orchestrator) emit(e Event) {
-	select {
-	case o.Events <- e:
-	default:
-		if e.Type != EventLog {
-			o.Events <- e
-		}
-	}
+func (o *Orchestrator) emit(e Event) { o.Events <- e }
+
+func (o *Orchestrator) log(line string) { o.emit(Event{Type: EventLog, Line: line}) }
+
+func (o *Orchestrator) finish(i int, status CrawlStatus, message string) {
+	o.Jobs[i].Status = status
+	o.Jobs[i].Message = message
+	o.emit(Event{Type: EventJobFinished, Index: i, Status: status, Message: message})
 }
 
-func (o *Orchestrator) log(line string) {
-	o.emit(Event{Type: EventLog, Line: line})
-}
-
-// Run executes the full archive pipeline.
+// Run executes the full archive pipeline and closes Events when it returns.
 func (o *Orchestrator) Run(ctx context.Context) {
 	defer close(o.Events)
 
-	if len(o.Jobs) == 0 {
-		o.emit(Event{Type: EventError, Message: "no URLs to archive"})
-		return
-	}
-
-	for _, j := range o.Jobs {
-		if !ValidURL(j.URL) {
-			o.emit(Event{Type: EventError, Message: fmt.Sprintf("URL must start with http:// or https://: %s", j.URL)})
-			return
-		}
-	}
-
-	if err := DockerAvailable(); err != nil {
-		o.emit(Event{Type: EventError, Message: err.Error()})
-		return
-	}
-
-	running, err := IsCrawlRunning()
-	if err != nil {
-		o.emit(Event{Type: EventError, Message: err.Error()})
-		return
-	}
-	if running {
-		o.emit(Event{Type: EventError, Message: "a crawl is already running; reattach with archive or use 'archive quit' first"})
-		return
-	}
-
-	workdir := filepath.Join(o.Cfg.RootDir, "crawls")
+	workdir := filepath.Join(o.cfg.RootDir, "crawls")
 	if err := os.MkdirAll(workdir, 0o777); err != nil {
 		o.emit(Event{Type: EventError, Message: err.Error()})
 		return
 	}
 
-	iniPath := filepath.Join(o.Cfg.RootDir, "archive.ini")
-	if err := o.Cfg.WriteArchiveINI(iniPath); err != nil {
-		o.emit(Event{Type: EventError, Message: err.Error()})
-		return
-	}
-
-	o.emit(Event{Type: EventBuildStarted, Message: "Building webrecorder Docker image..."})
+	o.emit(Event{Type: EventBuildStarted})
 	o.log("Building Docker image: " + ImageName)
-	if err := BuildImage(ctx, o.Cfg.RootDir, o.log); err != nil {
+	if err := BuildImage(ctx, o.log); err != nil {
 		if ctx.Err() != nil || o.cancelled() {
-			o.markFrom(0, StatusCancelled)
+			o.markRemaining(0, StatusCancelled)
 			o.emit(Event{Type: EventAllDone})
 			return
 		}
 		o.emit(Event{Type: EventError, Message: fmt.Sprintf("docker build failed: %v", err)})
 		return
 	}
-	o.emit(Event{Type: EventBuildFinished, Message: "Image ready"})
+	o.emit(Event{Type: EventBuildFinished})
 
-	total := len(o.Jobs)
 	for i := range o.Jobs {
 		if o.cancelled() || ctx.Err() != nil {
-			o.markFrom(i, StatusCancelled)
+			o.markRemaining(i, StatusCancelled)
 			break
 		}
-
-		job := &o.Jobs[i]
-		if job.Status == StatusCompleted || job.Status == StatusSkipped {
-			continue
+		if !o.runJob(ctx, i, workdir) {
+			break
 		}
-		if job.Status == StatusCancelled {
-			continue
-		}
-
-		if o.Cfg.SkipExistingCrawls {
-			if skipped, name := shouldSkipExisting(workdir, job.NormalizedURL, o.log); skipped {
-				job.Status = StatusSkipped
-				job.Message = "existing crawl: " + name
-				o.emit(Event{
-					Type:    EventJobFinished,
-					Index:   i,
-					Total:   total,
-					URL:     job.URL,
-					Status:  StatusSkipped,
-					Message: job.Message,
-				})
-				continue
-			}
-		}
-
-		now := time.Now().Format("2006-01-02T150405")
-		crawlDir := filepath.Join(workdir, "INCOMPLETE-"+now+"-"+job.NormalizedURL)
-		completeDir := filepath.Join(workdir, now+"-"+job.NormalizedURL)
-
-		if err := os.MkdirAll(crawlDir, 0o777); err != nil {
-			job.Status = StatusFailed
-			job.Message = err.Error()
-			o.emit(Event{Type: EventJobFinished, Index: i, Total: total, URL: job.URL, Status: StatusFailed, Message: job.Message})
-			continue
-		}
-
-		job.Status = StatusRunning
-		o.emit(Event{Type: EventJobStarted, Index: i, Total: total, URL: job.URL})
-		o.log(fmt.Sprintf("Starting crawl %d/%d: %s", i+1, total, job.URL))
-
-		select {
-		case <-o.skipCh:
-		default:
-		}
-
-		proc, err := StartCrawl(ctx, RunOptions{
-			RootDir:       o.Cfg.RootDir,
-			CrawlDir:      crawlDir,
-			URL:           job.URL,
-			NormalizedURL: job.NormalizedURL,
-			Timestamp:     now,
-			ArchiveINI:    iniPath,
-		}, o.log)
-		if err != nil {
-			_ = os.RemoveAll(crawlDir)
-			job.Status = StatusFailed
-			job.Message = err.Error()
-			o.emit(Event{Type: EventJobFinished, Index: i, Total: total, URL: job.URL, Status: StatusFailed, Message: job.Message})
-			continue
-		}
-		o.current = proc
-
-		waitErr := make(chan error, 1)
-		go func() { waitErr <- proc.Wait() }()
-
-		outcome := "ok"
-		select {
-		case err := <-waitErr:
-			if o.cancelled() {
-				outcome = "cancelled"
-			} else if o.consumeSkip() {
-				outcome = "skipped"
-			} else if err != nil {
-				if o.cancelled() {
-					outcome = "cancelled"
-				} else if o.consumeSkip() {
-					outcome = "skipped"
-				} else {
-					outcome = "failed"
-					job.Status = StatusFailed
-					job.Message = err.Error()
-					_ = os.RemoveAll(crawlDir)
-					o.current = nil
-					o.emit(Event{Type: EventJobFinished, Index: i, Total: total, URL: job.URL, Status: StatusFailed, Message: job.Message})
-					continue
-				}
-			}
-		case <-o.skipCh:
-			outcome = "skipped"
-			proc.Stop()
-			<-waitErr
-		case <-o.cancelCh:
-			outcome = "cancelled"
-			proc.Stop()
-			<-waitErr
-		case <-ctx.Done():
-			outcome = "cancelled"
-			proc.Stop()
-			<-waitErr
-		}
-		o.current = nil
-
-		switch outcome {
-		case "cancelled":
-			job.Status = StatusCancelled
-			job.Message = "cancelled"
-			_ = os.RemoveAll(crawlDir)
-			o.emit(Event{Type: EventJobFinished, Index: i, Total: total, URL: job.URL, Status: StatusCancelled, Message: job.Message})
-			o.markFrom(i+1, StatusCancelled)
-			o.emit(Event{Type: EventAllDone})
-			return
-		case "skipped":
-			job.Status = StatusSkipped
-			job.Message = "skipped by user"
-			_ = os.RemoveAll(crawlDir)
-			o.log(fmt.Sprintf("Skipped %s", job.URL))
-			o.emit(Event{Type: EventJobFinished, Index: i, Total: total, URL: job.URL, Status: StatusSkipped, Message: job.Message})
-			continue
-		}
-
-		if err := os.Rename(crawlDir, completeDir); err != nil {
-			job.Status = StatusFailed
-			job.Message = fmt.Sprintf("finalize crawl dir: %v", err)
-			o.emit(Event{Type: EventJobFinished, Index: i, Total: total, URL: job.URL, Status: StatusFailed, Message: job.Message})
-			continue
-		}
-
-		job.Status = StatusCompleted
-		job.Message = filepath.Base(completeDir)
-		o.log(fmt.Sprintf("Crawl of %s complete!", job.URL))
-		o.emit(Event{Type: EventJobFinished, Index: i, Total: total, URL: job.URL, Status: StatusCompleted, Message: job.Message})
 	}
 
 	o.emit(Event{Type: EventAllDone})
 }
 
+// runJob archives o.Jobs[i]. It reports whether the queue should continue.
+func (o *Orchestrator) runJob(ctx context.Context, i int, workdir string) bool {
+	job := &o.Jobs[i]
+	if job.Status != StatusPending {
+		return true
+	}
+
+	if o.cfg.SkipExistingCrawls {
+		if existing := findExistingCrawl(workdir, job.NormalizedURL, o.log); existing != "" {
+			o.finish(i, StatusSkipped, "existing crawl: "+existing)
+			return true
+		}
+	}
+
+	now := time.Now().Format("2006-01-02T150405")
+	crawlDir := filepath.Join(workdir, "INCOMPLETE-"+now+"-"+job.NormalizedURL)
+	completeDir := filepath.Join(workdir, now+"-"+job.NormalizedURL)
+	if err := os.MkdirAll(crawlDir, 0o777); err != nil {
+		o.finish(i, StatusFailed, err.Error())
+		return true
+	}
+
+	job.Status = StatusRunning
+	o.emit(Event{Type: EventJobStarted, Index: i})
+	o.log(fmt.Sprintf("Starting crawl %d/%d: %s", i+1, len(o.Jobs), job.URL))
+
+	// Drop a skip request that arrived before this crawl started.
+	drain(o.skipCh)
+
+	proc := StartCrawl(ctx, RunOptions{
+		CrawlDir:      crawlDir,
+		URL:           job.URL,
+		NormalizedURL: job.NormalizedURL,
+		Timestamp:     now,
+		Env:           o.cfg.crawlEnv(),
+	}, o.log)
+	o.setCurrent(proc)
+
+	waitCh := make(chan error, 1)
+	go func() { waitCh <- proc.Wait() }()
+
+	var runErr error
+	stopped := ""
+	select {
+	case runErr = <-waitCh:
+	case <-o.skipCh:
+		stopped = "skip"
+	case <-o.cancelCh:
+		stopped = "cancel"
+	case <-ctx.Done():
+		stopped = "cancel"
+	}
+	if stopped != "" {
+		proc.Stop()
+		<-waitCh
+	}
+	o.setCurrent(nil)
+
+	// The container may have exited on its own just as a control arrived.
+	switch {
+	case stopped == "cancel" || o.cancelled() || ctx.Err() != nil:
+		_ = os.RemoveAll(crawlDir)
+		o.finish(i, StatusCancelled, "cancelled")
+		o.markRemaining(i+1, StatusCancelled)
+		return false
+	case stopped == "skip" || o.consumeSkip():
+		_ = os.RemoveAll(crawlDir)
+		o.log("Skipped " + job.URL)
+		o.finish(i, StatusSkipped, "skipped by user")
+		return true
+	case runErr != nil:
+		_ = os.RemoveAll(crawlDir)
+		o.finish(i, StatusFailed, runErr.Error())
+		return true
+	}
+
+	if err := os.Rename(crawlDir, completeDir); err != nil {
+		o.finish(i, StatusFailed, fmt.Sprintf("finalize crawl dir: %v", err))
+		return true
+	}
+	o.log(fmt.Sprintf("Crawl of %s complete!", job.URL))
+	o.finish(i, StatusCompleted, filepath.Base(completeDir))
+	return true
+}
+
+// cancelled reports whether cancellation was requested, leaving the request in
+// place so later checks still see it.
 func (o *Orchestrator) cancelled() bool {
 	select {
 	case <-o.cancelCh:
-		select {
-		case o.cancelCh <- struct{}{}:
-		default:
-		}
+		signal(o.cancelCh)
 		return true
 	default:
 		return false
 	}
 }
 
-func (o *Orchestrator) consumeSkip() bool {
-	select {
-	case <-o.skipCh:
-		return true
-	default:
-		return false
-	}
-}
+func (o *Orchestrator) consumeSkip() bool { return drain(o.skipCh) }
 
-func (o *Orchestrator) markFrom(start int, status CrawlStatus) {
+func (o *Orchestrator) markRemaining(start int, status CrawlStatus) {
 	for i := start; i < len(o.Jobs); i++ {
 		if o.Jobs[i].Status == StatusPending || o.Jobs[i].Status == StatusRunning {
 			o.Jobs[i].Status = status
+			o.emit(Event{Type: EventJobFinished, Index: i, Status: status, Message: string(status)})
 		}
 	}
 }
 
-func shouldSkipExisting(workdir, normalizedURL string, logFn func(string)) (bool, string) {
+// findExistingCrawl returns the name of a completed crawl for normalizedURL,
+// deleting any leftover incomplete crawls it finds along the way.
+func findExistingCrawl(workdir, normalizedURL string, logFn func(string)) string {
 	entries, err := os.ReadDir(workdir)
 	if err != nil {
-		return false, ""
+		return ""
 	}
-
 	suffix := "-" + normalizedURL
 	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
 		name := e.Name()
-		if !strings.HasSuffix(name, suffix) {
+		if !e.IsDir() || !strings.HasSuffix(name, suffix) {
 			continue
 		}
 		if strings.HasPrefix(name, "INCOMPLETE-") {
@@ -393,7 +286,25 @@ func shouldSkipExisting(workdir, normalizedURL string, logFn func(string)) (bool
 			_ = os.RemoveAll(filepath.Join(workdir, name))
 			continue
 		}
-		return true, name
+		return name
 	}
-	return false, ""
+	return ""
+}
+
+// signal makes a non-blocking request on a buffered channel of capacity 1.
+func signal(ch chan struct{}) {
+	select {
+	case ch <- struct{}{}:
+	default:
+	}
+}
+
+// drain clears a pending request, reporting whether there was one.
+func drain(ch chan struct{}) bool {
+	select {
+	case <-ch:
+		return true
+	default:
+		return false
+	}
 }
