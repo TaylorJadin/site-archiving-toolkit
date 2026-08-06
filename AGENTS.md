@@ -11,7 +11,8 @@ This repo (branch `v2`) is a Go [Bubble Tea](https://github.com/charmbracelet/bu
 - `resources/` — files embedded into the binary via `resources/embed.go`: the crawler `Dockerfile.webrecorder` build context (`webrecorder.sh`, `index.html`, `redirect.php`, `htaccess`) and the default `env.example`.
 
 ### Build / test / run
-- Build: `go build -o archive ./cmd/archive`
+- Makefile targets: `make build`, `make run` (via `go run`; pass args with `ARGS=...`, e.g. `make run ARGS='https://example.com'`), `make test`, `make vet`, `make fmt`, `make releases`, `make clean`.
+- Build: `go build -o archive ./cmd/archive` (or `make build`)
 - Test: `go test ./...` — Vet: `go vet ./...` — Format: `gofmt -l .`
 - Run: `./archive` (interactive TUI), `./archive <url>...`, `./archive --background <url>`, `./archive resume`, `./archive quit`, `./archive server start` / `./archive server stop`.
 

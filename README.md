@@ -99,8 +99,21 @@ Crawl output lives in the `crawls` directory (on Reclaim Cloud: `/root/site-arch
 ### Build from source
 
 ```bash
-go build -o archive ./cmd/archive
+make build   # or: go build -o archive ./cmd/archive
 ./archive
+```
+
+Run without building a binary first:
+
+```bash
+make run
+make run ARGS='https://example.com'
+```
+
+Cross-compile release zips for Linux, macOS, and Windows:
+
+```bash
+make releases
 ```
 
 ### Commands
